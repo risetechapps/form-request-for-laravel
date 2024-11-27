@@ -1,11 +1,11 @@
 {
-    "name": "risetechapps/form-request",
+    "name": "risetechapps/form-request-for-laravel",
     "description": "Package Form Request",
     "keywords": [
         "risetech",
         "form-request"
     ],
-    "homepage": "https://github.com/risetechapps/form-request",
+    "homepage": "https://github.com/risetechapps/form-request-for-laravel",
     "license": "MIT",
     "type": "library",
     "authors": [
@@ -18,7 +18,9 @@
     "require": {
         "php": "^8.1",
         "illuminate/support": "^9.0|^10.0",
-        "facade/ignition-contracts": "^1.0.2"
+        "facade/ignition-contracts": "^1.0.2",
+        "risetechapps/uuid-for-laravel": "^1.0",
+        "risetechapps/monitoring-for-laravel": "^1.0"
     },
     "require-dev": {
         "orchestra/testbench": "^7.0|^8.0",
