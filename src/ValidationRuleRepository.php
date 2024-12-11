@@ -70,11 +70,13 @@ class ValidationRuleRepository
     private function setIdUpdate(mixed $id, $rules): array
     {
         return array_map(function ($rule) use ($id) {
-            if (str_contains($rule, 'unique:')) {
+            if (str_contains($rule, 'unique:') || str_contains($rule, 'unique')) {
                 $parts = explode('|', $rule);
                 foreach ($parts as &$part) {
                     if (str_contains($part, 'unique:')) {
                         $part .= ',' . $id;
+                    }else if (str_contains($part, 'unique')) {
+                        $part .= ':' . $id;
                     }
                 }
                 return implode('|', $parts);
