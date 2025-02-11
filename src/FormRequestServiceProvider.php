@@ -2,14 +2,11 @@
 
 namespace RiseTechApps\FormRequest;
 
-use Illuminate\Contracts\Container\BindingResolutionException;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\ServiceProvider;
 use RiseTechApps\FormRequest\Commands\MigrateCommand;
 use RiseTechApps\FormRequest\Commands\SeedCommand;
-use Illuminate\Support\Facades\Validator;
 use RiseTechApps\FormRequest\Contracts\ValidatorContract;
-use Illuminate\Console\Scheduling\Schedule;
 
 
 class FormRequestServiceProvider extends ServiceProvider
@@ -79,5 +76,4 @@ class FormRequestServiceProvider extends ServiceProvider
             }
         }
     }
-
 }
