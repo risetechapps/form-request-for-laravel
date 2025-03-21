@@ -1,18 +1,20 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
+use Tpetry\PostgresqlEnhanced\Schema\Blueprint;
+use Tpetry\PostgresqlEnhanced\Support\Facades\Schema;
 
 return new class extends Migration {
     public function up(): void
     {
+        Schema::createExtensionIfNotExists('citext');
+
         Schema::create('form_requests', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->string('form')->nullable();
-            $table->json('rules')->nullable();
+            $table->caseInsensitiveText('form')->nullable();
+            $table->jsonb('rules')->nullable();
             $table->string('description')->nullable();
-            $table->json('data')->nullable();
+            $table->jsonb('data')->nullable();
             $table->timestamps();
         });
     }
