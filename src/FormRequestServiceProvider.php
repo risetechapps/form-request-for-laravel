@@ -44,7 +44,7 @@ class FormRequestServiceProvider extends ServiceProvider
             return new Commands\MigrateCommand($app['migrator'], $app['events']);
         });
 
-        $this->app->singleton('form-request', function () {
+        $this->app->singleton(FormRequest::class, function () {
             return new FormRequest;
         });
 
