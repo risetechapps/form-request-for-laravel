@@ -28,6 +28,7 @@ class Rules
             'cnpj' => Validator\validateCNPJ::class,
             'cellphone' => Validator\validateCellphone::class,
             'uniqueAuthenticationCpf' => Validator\validateUniqueAuthenticationCpf::class,
+            'uniqueJson' => Validator\validateUniqueJson::class,
         ];
     }
 }
