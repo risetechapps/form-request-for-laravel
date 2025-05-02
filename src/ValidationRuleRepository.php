@@ -2,7 +2,8 @@
 
 namespace RiseTechApps\FormRequest;
 
-use \RiseTechApps\FormRequest\Models\FormRequest as FormRequestModel;
+use Illuminate\Support\Str;
+use RiseTechApps\FormRequest\Models\FormRequest as FormRequestModel;
 
 class ValidationRuleRepository
 {
@@ -58,9 +59,13 @@ class ValidationRuleRepository
     protected function extractRules($field, $rulesString): array
     {
         $formattedRules = [];
-
         foreach (explode('|', $rulesString) as $rule) {
-            $formattedRules[$field . '.' . trim(explode(':', $rule)[0])] = $field . '.' . trim(explode(':', $rule)[0]);
+            $r = trim(explode(':', $rule)[0]);
+
+            if(Str::lower($r) === "uniquejson") {
+                $r = "unique";
+            };
+            $formattedRules[$field . '.' .$r] = $field . '.' . $r;
         }
 
         return $formattedRules;
