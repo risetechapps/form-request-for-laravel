@@ -2,7 +2,7 @@
 
 namespace RiseTechApps\FormRequest\Services\Validator;
 
-use RiseTechApps\AuthService\Model\Authentication\Authentication;
+use RiseTechApps\AuthService\Models\Authentication\Authentication;
 use RiseTechApps\FormRequest\Contracts\ValidatorContract;
 
 class validateUniqueAuthenticationCpf implements ValidatorContract
