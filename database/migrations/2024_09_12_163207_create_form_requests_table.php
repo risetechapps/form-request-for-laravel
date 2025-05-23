@@ -7,11 +7,18 @@ use Tpetry\PostgresqlEnhanced\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::createExtensionIfNotExists('citext');
+        if (DB::getDriverName() == 'pgsql') {
+            Schema::createExtensionIfNotExists('citext');
+        }
 
-        Schema::create('form_requests', function (Blueprint $table) {
+        Schema::create('form_requests', function ($table) {
             $table->uuid('id')->primary();
-            $table->caseInsensitiveText('form')->nullable();
+            if(DB::getDriverName() == 'pgsql'){
+                $table->caseInsensitiveText('form')->nullable();
+            }else{
+                $table->string('form')->nullable();
+            }
+
             $table->jsonb('rules')->nullable();
             $table->string('description')->nullable();
             $table->jsonb('data')->nullable();
