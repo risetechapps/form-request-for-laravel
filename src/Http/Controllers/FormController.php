@@ -14,18 +14,24 @@ use RiseTechApps\FormRequest\ValidationRuleRepository;
 
 class FormController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         try {
 
             $model = new FormRequest();
 
-            return response()->json([
-                'success' => true,
-                'data' => FormRequestResource::collection($model->all())
-            ]);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, $e->getMessage()], 500);
+            $data = FormRequestResource::collection($model->all());
+
+            logglyInfo()->withRequest($request)->performedOn(self::class)
+                ->withTags(['action' => 'index'])->log("Successfully loaded datatable");
+
+            return response()->jsonSuccess($data);
+        } catch (\Exception $exception) {
+
+            logglyError()->exception($exception)->withRequest($request)->performedOn(self::class)
+                ->withTags(['action' => 'index'])->log("Error loading datatable");
+
+            return response()->jsonGone("Error loading datatable");
         }
     }
 
@@ -33,14 +39,18 @@ class FormController extends Controller
     {
         try {
             $model = new FormRequest();
-            $store = $model->create($request->validationData());
+            $model->create($request->validationData());
 
-            return response()->json([
-                'success' => true,
-                'data' => $store->getKey()
-            ]);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false], 500);
+            logglyInfo()->withRequest($request)->performedOn(self::class)
+                ->withTags(['action' => 'store'])->log("Success when registering registration");
+
+            return response()->jsonSuccess();
+        } catch (\Exception $exception) {
+
+            logglyError()->exception($exception)->withRequest($request)->performedOn(self::class)
+                ->withTags(['action' => 'store'])->log("Error by registering registration");
+
+            return response()->jsonGone("Error by registering registration");
         }
     }
 
@@ -48,14 +58,18 @@ class FormController extends Controller
     {
         try {
             $model = new FormRequest();
-            $data = $model->find($request->id);
+            $data = FormRequestResource::make( $model->find($request->id));
 
-            return response()->json([
-                'success' => true,
-                'data' => FormRequestResource::make( $model->find($request->id))
-            ]);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false], 500);
+            logglyInfo()->withRequest($request)->performedOn(self::class)
+                ->withTags(['action' => 'show'])->log("Success when loading the record for viewing");
+
+            return response()->jsonSuccess($data);
+        } catch (\Exception $exception) {
+
+            logglyError()->exception($exception)->withRequest($request)->performedOn(self::class)
+                ->withTags(['action' => 'show'])->log("Error when loading the record to be viewed");
+
+            return response()->jsonGone("Error when loading the record to be viewed");
         }
     }
 
@@ -66,12 +80,18 @@ class FormController extends Controller
             $model = new FormRequest();
             $model = $model->find($request->id);
             $update = $model->update($request->validationData());
-            return response()->json([
-                'success' => true,
-                'data' => $update
-            ]);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false], 500);
+
+            logglyInfo()->withRequest($request)->performedOn(self::class)
+                ->withTags(['action' => 'update'])->log("Success by updating the registration");
+
+            return response()->jsonSuccess($update);
+
+        } catch (\Exception $exception) {
+
+            logglyError()->exception($exception)->withRequest($request)->performedOn(self::class)
+                ->withTags(['action' => 'update'])->log("Error update the registration");
+
+            return response()->jsonGone("Error update the registration");
         }
     }
 
@@ -81,10 +101,26 @@ class FormController extends Controller
 
             $model = new FormRequest();
             $data = $model->find($request->id);
-            return response()->json([
-                'success' => $data->delete()]);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false], 500);
+
+            if($data->delete()){
+                logglyInfo()->withRequest($request)->performedOn(self::class)
+                    ->withTags(['action' => 'delete'])->log("Success by deleting the record");
+
+                return response()->jsonSuccess();
+
+            }else{
+                logglyError()->withRequest($request)->performedOn(self::class)
+                    ->withTags(['action' => 'delete'])->log("Error by deleting the record");
+
+                return response()->jsonGone("Error by deleting the record");
+            }
+
+        } catch (\Exception $exception) {
+
+            logglyError()->exception($exception)->withRequest($request)->performedOn(self::class)
+                ->withTags(['action' => 'store'])->log("Error by deleting the record");
+
+            return response()->jsonGone("Error by deleting the record");
         }
     }
 }

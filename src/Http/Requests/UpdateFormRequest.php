@@ -30,10 +30,8 @@ class UpdateFormRequest extends FormRequest
 
     public function authorize(): bool
     {
-        if(auth()->check()){
-            return true;
-        }
-        return false;
+        $module = get_class(request()->route()->getController()) . '@' . request()->route()->getActionMethod();
+        return auth()->check() && auth()->user()->hasPermission($module);
     }
 
     public function rules(): array

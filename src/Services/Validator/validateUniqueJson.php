@@ -22,7 +22,10 @@ class validateUniqueJson implements ValidatorContract
                     ->where("{$jsonField}->{$jsonKey}", $value)
                     ->where('id', '!=', $valueId)
                     ->count() === 0;
-        } catch (\Exception $e) {
+        } catch (\Exception $exception) {
+            logglyError()->exception($exception)->performedOn(self::class)
+                ->withProperties(['attribute' => $attribute, 'value' => $value, 'parameters' => $parameters])
+                ->withTags(['action' => 'validate'])->log("Error validating data rules");
             return false;
         }
     }
