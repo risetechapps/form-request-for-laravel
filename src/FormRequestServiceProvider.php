@@ -28,7 +28,9 @@ class FormRequestServiceProvider extends ServiceProvider
             SeedCommand::class,
 
         ]);
-
+        
+        $this->loadTranslationsFrom(__DIR__ . '/../resources/lang', 'formrequest');
+        
         $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
 
         $this->registerRules();

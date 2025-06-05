@@ -39,7 +39,9 @@ class StoreFormRequest extends FormRequest
 
     public function messages(): array
     {
-        return $this->messages;
+        return array_map(function ($value) {
+            return __('formrequest::validation.' . $value);
+        }, $this->result['messages']);
     }
 
 }
