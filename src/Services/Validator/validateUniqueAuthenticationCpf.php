@@ -25,9 +25,9 @@ class validateUniqueAuthenticationCpf implements ValidatorContract
             return false;
         } catch (\Exception $exception) {
 
-            logglyError()->exception($exception)->performedOn(self::class)
+            logglyError()->exception($exception)
                 ->withProperties(['attribute' => $attribute, 'value' => $value, 'parameters' => $parameters])
-                ->withTags(['action' => 'validate'])->log("Error validating data rules");
+                ->log("Error validating data rules");
             return false;
         }
     }

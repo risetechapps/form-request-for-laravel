@@ -22,14 +22,12 @@ class FormController extends Controller
 
             $data = FormRequestResource::collection($model->all());
 
-            logglyInfo()->withRequest($request)->performedOn(self::class)
-                ->withTags(['action' => 'index'])->log("Successfully loaded datatable");
+            logglyInfo()->withRequest($request)->log("Successfully loaded datatable");
 
             return response()->jsonSuccess($data);
         } catch (\Exception $exception) {
 
-            logglyError()->exception($exception)->withRequest($request)->performedOn(self::class)
-                ->withTags(['action' => 'index'])->log("Error loading datatable");
+            logglyError()->exception($exception)->withRequest($request)->log("Error loading datatable");
 
             return response()->jsonGone("Error loading datatable");
         }
@@ -41,8 +39,7 @@ class FormController extends Controller
             $model = new FormRequest();
             $model->create($request->validationData());
 
-            logglyInfo()->withRequest($request)->performedOn(self::class)
-                ->withTags(['action' => 'store'])->log("Success when registering registration");
+            logglyInfo()->withRequest($request)->performedOn($model)->log("Success when registering registration");
 
             return response()->jsonSuccess();
         } catch (\Exception $exception) {
@@ -60,14 +57,12 @@ class FormController extends Controller
             $model = new FormRequest();
             $data = FormRequestResource::make( $model->find($request->id));
 
-            logglyInfo()->withRequest($request)->performedOn(self::class)
-                ->withTags(['action' => 'show'])->log("Success when loading the record for viewing");
+            logglyInfo()->withRequest($request)->performedOn($model)->log("Success when loading the record for viewing");
 
             return response()->jsonSuccess($data);
         } catch (\Exception $exception) {
 
-            logglyError()->exception($exception)->withRequest($request)->performedOn(self::class)
-                ->withTags(['action' => 'show'])->log("Error when loading the record to be viewed");
+            logglyError()->exception($exception)->withRequest($request)->log("Error when loading the record to be viewed");
 
             return response()->jsonGone("Error when loading the record to be viewed");
         }
@@ -81,15 +76,13 @@ class FormController extends Controller
             $model = $model->find($request->id);
             $update = $model->update($request->validationData());
 
-            logglyInfo()->withRequest($request)->performedOn(self::class)
-                ->withTags(['action' => 'update'])->log("Success by updating the registration");
+            logglyInfo()->withRequest($request)->performedOn($model)->log("Success by updating the registration");
 
             return response()->jsonSuccess($update);
 
         } catch (\Exception $exception) {
 
-            logglyError()->exception($exception)->withRequest($request)->performedOn(self::class)
-                ->withTags(['action' => 'update'])->log("Error update the registration");
+            logglyError()->exception($exception)->withRequest($request)->log("Error update the registration");
 
             return response()->jsonGone("Error update the registration");
         }
@@ -103,22 +96,19 @@ class FormController extends Controller
             $data = $model->find($request->id);
 
             if($data->delete()){
-                logglyInfo()->withRequest($request)->performedOn(self::class)
-                    ->withTags(['action' => 'delete'])->log("Success by deleting the record");
+                logglyInfo()->withRequest($request)->performedOn($model)->log("Success by deleting the record");
 
                 return response()->jsonSuccess();
 
             }else{
-                logglyError()->withRequest($request)->performedOn(self::class)
-                    ->withTags(['action' => 'delete'])->log("Error by deleting the record");
+                logglyError()->withRequest($request)->log("Error by deleting the record");
 
                 return response()->jsonGone("Error by deleting the record");
             }
 
         } catch (\Exception $exception) {
 
-            logglyError()->exception($exception)->withRequest($request)->performedOn(self::class)
-                ->withTags(['action' => 'store'])->log("Error by deleting the record");
+            logglyError()->exception($exception)->withRequest($request)->log("Error by deleting the record");
 
             return response()->jsonGone("Error by deleting the record");
         }
