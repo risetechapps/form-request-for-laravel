@@ -62,9 +62,7 @@ class ValidationRuleRepository
         foreach (explode('|', $rulesString) as $rule) {
             $r = trim(explode(':', $rule)[0]);
 
-            if(Str::lower($r) === "uniquejson") {
-                $r = "unique";
-            };
+            $r = preg_replace('/(?<!^)[A-Z]/', '_$0', $r);
             $formattedRules[$field . '.' .$r] = $field . '.' . $r;
         }
 
