@@ -2,6 +2,7 @@
 
 namespace RiseTechApps\FormRequest;
 
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use RiseTechApps\FormRequest\Models\FormRequest as FormRequestModel;
 
@@ -62,7 +63,7 @@ class ValidationRuleRepository
         foreach (explode('|', $rulesString) as $rule) {
             $r = trim(explode(':', $rule)[0]);
 
-            $r = preg_replace('/(?<!^)[A-Z]/', '_$0', $r);
+            $r = strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $r));
             $formattedRules[$field . '.' .$r] = $field . '.' . $r;
         }
 
