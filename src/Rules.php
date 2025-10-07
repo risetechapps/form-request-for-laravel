@@ -29,6 +29,7 @@ class Rules
             'cellphone' => Validator\validateCellphone::class,
             'uniqueAuthenticationCpf' => Validator\validateUniqueAuthenticationCpf::class,
             'uniqueJson' => Validator\validateUniqueJson::class,
+            'required_if_any' => Validator\validatorRequiredIfAny::class
         ];
     }
 }

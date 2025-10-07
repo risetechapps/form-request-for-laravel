@@ -3,7 +3,6 @@
 namespace RiseTechApps\FormRequest\Services\Validator;
 
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use RiseTechApps\FormRequest\Contracts\ValidatorContract;
 
 class validateUniqueJson implements ValidatorContract
