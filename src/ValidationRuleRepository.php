@@ -5,10 +5,15 @@ namespace RiseTechApps\FormRequest;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Support\Arr;
+use RiseTechApps\FormRequest\FormDefinitions\FormDefinition;
+use RiseTechApps\FormRequest\FormDefinitions\FormRegistry;
 use RiseTechApps\FormRequest\Models\FormRequest as FormRequestModel;
 
 class ValidationRuleRepository
 {
+    private const CACHE_KEY_PREFIX = 'form-request:';
+    private const CACHE_KEY_REGISTRY = 'form-request:keys:';
+
     private CacheRepository $cache;
 
     private bool $cacheEnabled;
@@ -17,7 +22,8 @@ class ValidationRuleRepository
 
     public function __construct(
         private readonly FormRequestModel $forms,
-        CacheFactory $cacheFactory
+        CacheFactory $cacheFactory,
+        private readonly FormRegistry $registry
     ) {
         $cacheConfig = config('rules.cache', []);
         $this->cacheEnabled = (bool) ($cacheConfig['enabled'] ?? false);
@@ -29,9 +35,7 @@ class ValidationRuleRepository
     public function getRules(string $name, array $parameter = []): array
     {
         $cachedParameters = Arr::except($parameter, ['id']);
-        $cacheKey = $this->cacheKey($name, $cachedParameters);
-
-        $validationRules = $this->remember($cacheKey, function () use ($name, $cachedParameters) {
+        $validationRules = $this->remember($name, $cachedParameters, function () use ($name, $cachedParameters) {
             $rulesFromDatabase = $this->fetchRulesFromDatabase($name, $cachedParameters);
 
             if (!empty($rulesFromDatabase['rules'])) {
@@ -46,6 +50,22 @@ class ValidationRuleRepository
         }
 
         return $validationRules;
+    }
+
+    public function clearCache(string $name): void
+    {
+        if (!$this->cacheEnabled) {
+            return;
+        }
+
+        $registryKey = $this->cacheRegistryKey($name);
+        $keys = $this->cache->pull($registryKey, []);
+
+        foreach ($keys as $key) {
+            $this->cache->forget($key);
+        }
+
+        $this->cache->forget($this->cacheKey($name));
     }
 
     protected function generateMessages(array $rules): array
@@ -133,22 +153,19 @@ class ValidationRuleRepository
 
     private function fetchRulesFromConfiguration(string $name): array
     {
-        $defaults = Rules::defaultRules();
+        $definition = $this->registry->get($name);
 
-        if (!array_key_exists($name, $defaults)) {
+        if (!$definition instanceof FormDefinition) {
             return [
                 'rules' => [],
                 'messages' => [],
             ];
         }
 
-        $configuration = $defaults[$name];
+        $rules = $definition->rules();
+        $messages = $definition->messages();
 
-        if (is_array($configuration) && array_key_exists('rules', $configuration)) {
-            $rules = (array) $configuration['rules'];
-            $messages = $configuration['messages'] ?? $this->generateMessages($rules);
-        } else {
-            $rules = (array) $configuration;
+        if (empty($messages)) {
             $messages = $this->generateMessages($rules);
         }
 
@@ -161,20 +178,43 @@ class ValidationRuleRepository
     private function cacheKey(string $name, array $parameter = []): string
     {
         if (empty($parameter)) {
-            return sprintf('form-request:%s', $name);
+            return sprintf('%s%s', self::CACHE_KEY_PREFIX, $name);
         }
 
         ksort($parameter);
 
-        return sprintf('form-request:%s:%s', $name, md5(json_encode($parameter)));
+        return sprintf('%s%s:%s', self::CACHE_KEY_PREFIX, $name, md5(json_encode($parameter)));
     }
 
-    private function remember(string $key, callable $callback): array
+    private function remember(string $name, array $parameter, callable $callback): array
     {
         if (!$this->cacheEnabled) {
             return $callback();
         }
 
-        return $this->cache->remember($key, $this->cacheTtl, $callback);
+        $key = $this->cacheKey($name, $parameter);
+
+        return $this->cache->remember($key, $this->cacheTtl, function () use ($callback, $name, $key) {
+            $value = $callback();
+            $this->storeCacheKey($name, $key);
+
+            return $value;
+        });
+    }
+
+    private function storeCacheKey(string $name, string $cacheKey): void
+    {
+        $registryKey = $this->cacheRegistryKey($name);
+        $keys = $this->cache->get($registryKey, []);
+
+        if (!in_array($cacheKey, $keys, true)) {
+            $keys[] = $cacheKey;
+            $this->cache->put($registryKey, $keys, $this->cacheTtl);
+        }
+    }
+
+    private function cacheRegistryKey(string $name): string
+    {
+        return self::CACHE_KEY_REGISTRY . $name;
     }
 }

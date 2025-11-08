@@ -10,7 +10,18 @@ return [
     ],
 
     'forms' => [
-
+        // 'user_registration' => [
+        //     'rules' => [
+        //         'name' => 'required|string',
+        //         'email' => 'required|email|unique:users,email',
+        //     ],
+        //     'messages' => [
+        //         'email.unique' => 'validation.email_unique',
+        //     ],
+        //     'metadata' => [
+        //         'description' => 'Default rules for user registration forms.',
+        //     ],
+        // ],
     ],
 
     'cache' => [

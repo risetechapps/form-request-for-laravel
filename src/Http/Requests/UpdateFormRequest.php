@@ -2,72 +2,36 @@
 
 namespace RiseTechApps\FormRequest\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Lang;
-use Illuminate\Support\Str;
-use RiseTechApps\FormRequest\Traits\hasFormValidation\hasFormValidation;
-use RiseTechApps\FormRequest\ValidationRuleRepository;
-
-class UpdateFormRequest extends FormRequest
+class UpdateFormRequest extends DynamicFormRequest
 {
-    use hasFormValidation;
-    protected ValidationRuleRepository $validatorRuleRepository;
-
-    protected array $rules = [];
-    protected array $messages = [];
-
-    public function __construct(ValidationRuleRepository $validatorRuleRepository, array $query = [], array $request = [], array $attributes = [], array $cookies = [], array $files = [], array $server = [], $content = null)
-    {
-        parent::__construct($query, $request, $attributes, $cookies, $files, $server, $content);
-
-        $this->validatorRuleRepository = $validatorRuleRepository;
-
-        $data = $this->validatorRuleRepository->getRules('form_request', [
-            'id' => request()->id
-        ] );
-
-        $this->rules = $data['rules'];
-        $this->messages = $data['messages'];
-    }
-
     public function authorize(): bool
     {
-        $module = get_class(request()->route()->getController()) . '@' . request()->route()->getActionMethod();
-        return auth()->check() && auth()->user()->hasPermission($module);
+        $route = $this->route();
+
+        if ($route === null) {
+            return false;
+        }
+
+        $module = get_class($route->getController()) . '@' . $route->getActionMethod();
+
+        $user = $this->user();
+
+        return $user !== null && $user->hasPermission($module);
     }
 
-    public function rules(): array
+    protected function formKey(): string
     {
-        return $this->rules;
+        return 'form_request';
     }
 
-    public function messages(): array
+    protected function validationContext(): array
     {
-        return array_map(function (string $value) {
-            $packageKey = 'formrequest::validation.' . $value;
-            if (Lang::has($packageKey)) {
-                return __($packageKey);
-            }
+        $id = $this->route('id');
 
-            [$attribute, $rule] = array_pad(explode('.', $value, 2), 2, null);
+        if ($id === null) {
+            return [];
+        }
 
-            $customKey = sprintf('validation.custom.%s.%s', $attribute, $rule);
-            if ($attribute && $rule && Lang::has($customKey)) {
-                return __($customKey);
-            }
-
-            $fallbackKey = 'validation.' . $rule;
-            if ($rule && Lang::has($fallbackKey)) {
-                $readableAttribute = Str::of((string) $attribute)
-                    ->replace('_', ' ')
-                    ->lower()
-                    ->ucfirst()
-                    ->toString();
-
-                return __($fallbackKey, ['attribute' => $readableAttribute]);
-            }
-
-            return $value;
-        }, $this->messages);
+        return ['id' => (string) $id];
     }
 }

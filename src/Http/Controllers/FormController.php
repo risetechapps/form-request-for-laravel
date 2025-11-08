@@ -9,29 +9,42 @@ use Illuminate\Http\Request;
 use RiseTechApps\FormRequest\Http\Requests\StoreFormRequest;
 use RiseTechApps\FormRequest\Http\Requests\UpdateFormRequest;
 use RiseTechApps\FormRequest\Http\Resources\FormRequestResource;
-use RiseTechApps\FormRequest\Models\FormRequest;
+use RiseTechApps\FormRequest\FormDefinitions\FormDefinition;
+use RiseTechApps\FormRequest\Services\FormManager;
 use Throwable;
 
 class FormController extends Controller
 {
-    public function __construct(private readonly FormRequest $forms)
+    public function __construct(private readonly FormManager $forms)
     {
     }
 
     public function index(Request $request): JsonResponse
     {
         try {
-            $query = $this->forms->newQuery();
-
-            if ($request->filled('form')) {
-                $query->where('form', $request->query('form'));
-            }
-
             $perPage = (int) $request->query('per_page', 15);
+            $filters = array_filter([
+                'form' => $request->query('form'),
+            ]);
 
-            $data = $perPage <= 0
-                ? FormRequestResource::collection($query->get())
-                : FormRequestResource::collection($query->paginate(max($perPage, 1)));
+            $result = $this->forms->list($perPage, $filters);
+
+            $data = FormRequestResource::collection($result);
+
+            if ($request->boolean('include_configured')) {
+                $configured = collect($this->forms->configured())
+                    ->map(function (FormDefinition $definition) {
+                        return [
+                            'form' => $definition->name(),
+                            'rules' => $definition->rules(),
+                            'messages' => $definition->messages(),
+                            'metadata' => $definition->metadata(),
+                        ];
+                    })
+                    ->values();
+
+                $data->additional(['configured' => $configured]);
+            }
 
             logglyInfo()->withRequest($request)->log("Successfully loaded datatable");
 
@@ -64,7 +77,7 @@ class FormController extends Controller
     public function show(Request $request): JsonResponse
     {
         try {
-            $form = $this->forms->newQuery()->findOrFail($request->route('id'));
+            $form = $this->forms->findOrFail((string) $request->route('id'));
             $data = FormRequestResource::make($form);
 
             logglyInfo()->withRequest($request)->performedOn($form)->log("Success when loading the record for viewing");
@@ -86,9 +99,8 @@ class FormController extends Controller
     {
 
         try {
-            $form = $this->forms->newQuery()->findOrFail($request->route('id'));
-            $form->fill($request->validationData());
-            $form->save();
+            $form = $this->forms->findOrFail((string) $request->route('id'));
+            $form = $this->forms->update($form, $request->validationData());
 
             logglyInfo()->withRequest($request)->performedOn($form)->log("Success by updating the registration");
 
@@ -109,9 +121,9 @@ class FormController extends Controller
     public function destroy(Request $request): JsonResponse
     {
         try {
-            $form = $this->forms->newQuery()->findOrFail($request->route('id'));
+            $form = $this->forms->findOrFail((string) $request->route('id'));
 
-            $form->delete();
+            $this->forms->delete($form);
 
             logglyInfo()->withRequest($request)->performedOn($form)->log("Success by deleting the record");
 
