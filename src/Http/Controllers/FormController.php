@@ -3,29 +3,62 @@
 namespace RiseTechApps\FormRequest\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use RiseTechApps\FormRequest\Http\Requests\StoreFormRequest;
 use RiseTechApps\FormRequest\Http\Requests\UpdateFormRequest;
 use RiseTechApps\FormRequest\Http\Resources\FormRequestResource;
-use RiseTechApps\FormRequest\Models\FormRequest;
-use RiseTechApps\FormRequest\Rules;
-use RiseTechApps\FormRequest\ValidationRuleRepository;
+use RiseTechApps\FormRequest\FormDefinitions\FormDefinition;
+use RiseTechApps\FormRequest\Services\FormManager;
+use Throwable;
 
+/**
+ * API controller exposing CRUD endpoints for dynamic form requests.
+ */
 class FormController extends Controller
 {
+    /**
+     * Inject the form manager service for data access.
+     */
+    public function __construct(private readonly FormManager $forms)
+    {
+    }
+
+    /**
+     * List stored forms with optional pagination and registry metadata.
+     */
     public function index(Request $request): JsonResponse
     {
         try {
+            $perPage = (int) $request->query('per_page', 15);
+            $filters = array_filter([
+                'form' => $request->query('form'),
+            ]);
 
-            $model = new FormRequest();
+            $result = $this->forms->list($perPage, $filters);
 
-            $data = FormRequestResource::collection($model->all());
+            $data = FormRequestResource::collection($result);
+
+            if ($request->boolean('include_configured')) {
+                $configured = collect($this->forms->configured())
+                    ->map(function (FormDefinition $definition) {
+                        return [
+                            'form' => $definition->name(),
+                            'rules' => $definition->rules(),
+                            'messages' => $definition->messages(),
+                            'metadata' => $definition->metadata(),
+                        ];
+                    })
+                    ->values();
+
+                $data->additional(['configured' => $configured]);
+            }
 
             logglyInfo()->withRequest($request)->log("Successfully loaded datatable");
 
             return response()->jsonSuccess($data);
-        } catch (\Exception $exception) {
+        } catch (Throwable $exception) {
 
             logglyError()->exception($exception)->withRequest($request)->log("Error loading datatable");
 
@@ -33,16 +66,18 @@ class FormController extends Controller
         }
     }
 
+    /**
+     * Persist a new dynamic form definition.
+     */
     public function store(StoreFormRequest $request): JsonResponse
     {
         try {
-            $model = new FormRequest();
-            $model->create($request->validationData());
+            $form = $this->forms->create($request->validationData());
 
-            logglyInfo()->withRequest($request)->performedOn($model)->log("Success when registering registration");
+            logglyInfo()->withRequest($request)->performedOn($form)->log("Success when registering registration");
 
-            return response()->jsonSuccess();
-        } catch (\Exception $exception) {
+            return response()->jsonSuccess(FormRequestResource::make($form));
+        } catch (Throwable $exception) {
 
             logglyError()->exception($exception)->withRequest($request)->performedOn(self::class)
                 ->withTags(['action' => 'store'])->log("Error by registering registration");
@@ -51,16 +86,23 @@ class FormController extends Controller
         }
     }
 
+    /**
+     * Display a specific form definition.
+     */
     public function show(Request $request): JsonResponse
     {
         try {
-            $model = new FormRequest();
-            $data = FormRequestResource::make( $model->find($request->id));
+            $form = $this->forms->findOrFail((string) $request->route('id'));
+            $data = FormRequestResource::make($form);
 
-            logglyInfo()->withRequest($request)->performedOn($model)->log("Success when loading the record for viewing");
+            logglyInfo()->withRequest($request)->performedOn($form)->log("Success when loading the record for viewing");
 
             return response()->jsonSuccess($data);
-        } catch (\Exception $exception) {
+        } catch (ModelNotFoundException $exception) {
+            logglyError()->exception($exception)->withRequest($request)->log("Record not found for viewing");
+
+            return response()->jsonNotFound("Form request not found");
+        } catch (Throwable $exception) {
 
             logglyError()->exception($exception)->withRequest($request)->log("Error when loading the record to be viewed");
 
@@ -68,19 +110,25 @@ class FormController extends Controller
         }
     }
 
+    /**
+     * Update an existing form definition record.
+     */
     public function update(UpdateFormRequest $request): JsonResponse
     {
 
         try {
-            $model = new FormRequest();
-            $model = $model->find($request->id);
-            $update = $model->update($request->validationData());
+            $form = $this->forms->findOrFail((string) $request->route('id'));
+            $form = $this->forms->update($form, $request->validationData());
 
-            logglyInfo()->withRequest($request)->performedOn($model)->log("Success by updating the registration");
+            logglyInfo()->withRequest($request)->performedOn($form)->log("Success by updating the registration");
 
-            return response()->jsonSuccess($update);
+            return response()->jsonSuccess(FormRequestResource::make($form->refresh()));
 
-        } catch (\Exception $exception) {
+        } catch (ModelNotFoundException $exception) {
+            logglyError()->exception($exception)->withRequest($request)->log("Record not found for update");
+
+            return response()->jsonNotFound("Form request not found");
+        } catch (Throwable $exception) {
 
             logglyError()->exception($exception)->withRequest($request)->log("Error update the registration");
 
@@ -88,25 +136,25 @@ class FormController extends Controller
         }
     }
 
-    public function delete(Request $request): JsonResponse
+    /**
+     * Delete the specified form definition.
+     */
+    public function destroy(Request $request): JsonResponse
     {
         try {
+            $form = $this->forms->findOrFail((string) $request->route('id'));
 
-            $model = new FormRequest();
-            $data = $model->find($request->id);
+            $this->forms->delete($form);
 
-            if($data->delete()){
-                logglyInfo()->withRequest($request)->performedOn($model)->log("Success by deleting the record");
+            logglyInfo()->withRequest($request)->performedOn($form)->log("Success by deleting the record");
 
-                return response()->jsonSuccess();
+            return response()->jsonSuccess();
 
-            }else{
-                logglyError()->withRequest($request)->log("Error by deleting the record");
+        } catch (ModelNotFoundException $exception) {
+            logglyError()->exception($exception)->withRequest($request)->log("Record not found for deletion");
 
-                return response()->jsonGone("Error by deleting the record");
-            }
-
-        } catch (\Exception $exception) {
+            return response()->jsonNotFound("Form request not found");
+        } catch (Throwable $exception) {
 
             logglyError()->exception($exception)->withRequest($request)->log("Error by deleting the record");
 

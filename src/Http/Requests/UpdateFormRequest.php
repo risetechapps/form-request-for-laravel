@@ -2,47 +2,50 @@
 
 namespace RiseTechApps\FormRequest\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
-use RiseTechApps\FormRequest\Traits\hasFormValidation\hasFormValidation;
-use RiseTechApps\FormRequest\ValidationRuleRepository;
-
-class UpdateFormRequest extends FormRequest
+/**
+ * Form request responsible for validating updates to existing dynamic forms.
+ */
+class UpdateFormRequest extends DynamicFormRequest
 {
-    use hasFormValidation;
-    protected ValidationRuleRepository $validatorRuleRepository;
-
-    protected array $rules = [];
-    protected array $messages = [];
-
-    public function __construct(ValidationRuleRepository $validatorRuleRepository, array $query = [], array $request = [], array $attributes = [], array $cookies = [], array $files = [], array $server = [], $content = null)
-    {
-        parent::__construct($query, $request, $attributes, $cookies, $files, $server, $content);
-
-        $this->validatorRuleRepository = $validatorRuleRepository;
-
-        $data = $this->validatorRuleRepository->getRules('form_request', [
-            'id' => request()->id
-        ] );
-
-        $this->rules = $data['rules'];
-        $this->messages = $data['messages'];
-    }
-
+    /**
+     * Determine if the authenticated user may update the form definition.
+     */
     public function authorize(): bool
     {
-        $module = get_class(request()->route()->getController()) . '@' . request()->route()->getActionMethod();
-        return auth()->check() && auth()->user()->hasPermission($module);
+        $route = $this->route();
+
+        if ($route === null) {
+            return false;
+        }
+
+        $module = get_class($route->getController()) . '@' . $route->getActionMethod();
+
+        $user = $this->user();
+
+        return $user !== null && $user->hasPermission($module);
     }
 
-    public function rules(): array
+    /**
+     * Use the default form request definition for persistence.
+     */
+    protected function formKey(): string
     {
-        return $this->rules;
+        return 'form_request';
     }
 
-    public function messages(): array
+    /**
+     * Provide the identifier for unique rule adjustments during updates.
+     *
+     * @return array<string, string>
+     */
+    protected function validationContext(): array
     {
-        return array_map(function ($value) {
-            return __('formrequest::validation.' . $value);
-        }, $this->result['messages']);
+        $id = $this->route('id');
+
+        if ($id === null) {
+            return [];
+        }
+
+        return ['id' => (string) $id];
     }
 }

@@ -8,24 +8,38 @@ use Illuminate\Notifications\Notifiable;
 use RiseTechApps\HasUuid\Traits\HasUuid\HasUuid;
 use RiseTechApps\Monitoring\Traits\HasLoggly\HasLoggly;
 
-
+/**
+ * Eloquent model representing persisted dynamic form definitions.
+ */
 class FormRequest extends Model
 {
     use HasFactory, Notifiable, HasUuid, HasLoggly;
 
+    /**
+     * @var list<string>
+     */
     protected $fillable = [
-      'form',
-      'rules',
-      'description',
-      'data',
+        'form',
+        'rules',
+        'messages',
+        'description',
+        'data',
     ];
 
+    /**
+     * @var list<string>
+     */
     protected $hidden = [
         'id',
-        'data'
+        'data',
     ];
+
+    /**
+     * @var array<string, string>
+     */
     protected $casts = [
         'rules' => 'array',
+        'messages' => 'array',
         'data' => 'array',
     ];
 }

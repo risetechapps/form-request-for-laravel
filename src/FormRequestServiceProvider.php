@@ -8,8 +8,12 @@ use Illuminate\Support\ServiceProvider;
 use RiseTechApps\FormRequest\Commands\MigrateCommand;
 use RiseTechApps\FormRequest\Commands\SeedCommand;
 use RiseTechApps\FormRequest\Contracts\ValidatorContract;
+use RiseTechApps\FormRequest\FormDefinitions\FormRegistry;
+use RiseTechApps\FormRequest\Services\FormManager;
 
-
+/**
+ * Package service provider responsible for bootstrapping configuration and bindings.
+ */
 class FormRequestServiceProvider extends ServiceProvider
 {
     /**
@@ -28,9 +32,9 @@ class FormRequestServiceProvider extends ServiceProvider
             SeedCommand::class,
 
         ]);
-        
+
         $this->loadTranslationsFrom(__DIR__ . '/../resources/lang', 'formrequest');
-        
+
         $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
 
         $this->registerRules();
@@ -53,9 +57,17 @@ class FormRequestServiceProvider extends ServiceProvider
             return new FormRequest;
         });
 
+        $this->app->singleton(FormRegistry::class, function () {
+            return new FormRegistry(Rules::defaultRules());
+        });
+
         $this->app->singleton(ValidationRuleRepository::class);
+        $this->app->singleton(FormManager::class);
     }
 
+    /**
+     * Register custom validation rules defined by the package and configuration.
+     */
     private function registerRules(): void
     {
         $validatorConfig = config('rules.validators') ?? [];
@@ -80,37 +92,63 @@ class FormRequestServiceProvider extends ServiceProvider
         }
     }
 
+    /**
+     * Register response macros used for standardized JSON payloads.
+     */
     protected function registerMacros(): void
     {
-
-        if(!ResponseFactory::hasMacro('jsonSuccess')){
+        if (!ResponseFactory::hasMacro('jsonSuccess')) {
             ResponseFactory::macro('jsonSuccess', function ($data = []) {
                 $response = ['success' => true];
-                if (!empty($data)) $response['data'] = $data;
+                if (!empty($data)) {
+                    $response['data'] = $data;
+                }
                 return response()->json($response);
             });
         }
 
-        if(!ResponseFactory::hasMacro('jsonError')){
+        if (!ResponseFactory::hasMacro('jsonError')) {
             ResponseFactory::macro('jsonError', function ($data = null) {
                 $response = ['success' => false];
-                if (!is_null($data)) $response['message'] = $data;
+                if (!is_null($data)) {
+                    $response['message'] = $data;
+                }
                 return response()->json($response, 412);
             });
         }
 
-        if(!ResponseFactory::hasMacro('jsonGone')) {
+        if (!ResponseFactory::hasMacro('jsonGone')) {
             ResponseFactory::macro('jsonGone', function ($data = null) {
                 $response = ['success' => false];
-                if (!is_null($data)) $response['message'] = $data;
+                if (!is_null($data)) {
+                    $response['message'] = $data;
+                }
                 return response()->json($response, 410);
             });
         }
 
-        if(!ResponseFactory::hasMacro('jsonNotValidated')) {
-            ResponseFactory::macro('jsonNotValidated', function ($message = null, $error = null) {
+        if (!ResponseFactory::hasMacro('jsonNotFound')) {
+            ResponseFactory::macro('jsonNotFound', function ($data = null) {
                 $response = ['success' => false];
-                if (!is_null($message)) $response['message'] = $message;
+                if (!is_null($data)) {
+                    $response['message'] = $data;
+                }
+
+                return response()->json($response, 404);
+            });
+        }
+
+        if (!ResponseFactory::hasMacro('jsonNotValidated')) {
+            ResponseFactory::macro('jsonNotValidated', function ($message = null, $errors = null, array $extras = []) {
+                $response = array_merge(['success' => false], $extras);
+
+                if (!is_null($message)) {
+                    $response['message'] = $message;
+                }
+
+                if (!is_null($errors)) {
+                    $response['errors'] = $errors;
+                }
 
                 return response()->json($response, 422);
             });
