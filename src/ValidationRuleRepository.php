@@ -134,7 +134,7 @@ class ValidationRuleRepository
 
         $result = $this->forms->newQuery()
             ->where($where)
-            ->first(['rules']);
+            ->first(['rules', 'messages']);
 
         if (empty($result)) {
             return [
@@ -144,10 +144,15 @@ class ValidationRuleRepository
         }
 
         $rules = (array) $result->rules;
+        $messages = (array) ($result->messages ?? []);
+
+        if (empty($messages)) {
+            $messages = $this->generateMessages($rules);
+        }
 
         return [
             'rules' => $rules,
-            'messages' => $this->generateMessages($rules),
+            'messages' => $messages,
         ];
     }
 

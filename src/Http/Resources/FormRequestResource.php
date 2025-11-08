@@ -12,6 +12,9 @@ class FormRequestResource extends JsonResource
         return [
             'name' => $this->form,
             'rule' => $this->rules,
+            'rules' => $this->rules,
+            'messages' => $this->messages ?? [],
+            'metadata' => $this->data ?? [],
             'description' => $this->description
         ];
     }
