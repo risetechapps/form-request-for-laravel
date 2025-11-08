@@ -11,5 +11,11 @@ return [
 
     'forms' => [
 
-    ]
+    ],
+
+    'cache' => [
+        'enabled' => true,
+        'ttl' => 300,
+        'store' => null,
+    ],
 ];

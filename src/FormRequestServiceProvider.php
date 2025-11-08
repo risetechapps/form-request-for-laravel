@@ -107,6 +107,17 @@ class FormRequestServiceProvider extends ServiceProvider
             });
         }
 
+        if(!ResponseFactory::hasMacro('jsonNotFound')) {
+            ResponseFactory::macro('jsonNotFound', function ($data = null) {
+                $response = ['success' => false];
+                if (!is_null($data)) {
+                    $response['message'] = $data;
+                }
+
+                return response()->json($response, 404);
+            });
+        }
+
         if(!ResponseFactory::hasMacro('jsonNotValidated')) {
             ResponseFactory::macro('jsonNotValidated', function ($message = null, $error = null) {
                 $response = ['success' => false];
