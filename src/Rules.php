@@ -15,6 +15,9 @@ class Rules
                 'form_request' => [
                     'form' => 'bail|required|min:3|unique:form_requests,form',
                     'rules' => 'bail|required|array',
+                    'messages' => 'nullable|array',
+                    'description' => 'nullable|string',
+                    'data' => 'nullable|array',
                 ]
             ]
         );

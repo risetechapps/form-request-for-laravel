@@ -28,12 +28,12 @@ Execute o seguinte comando no terminal:
 Execute o seguinte comando no terminal:
 ```php
   
-  use RiseTechApps\FormRequest\Traits\hasFormValidation\hasFormValidation;
+  use RiseTechApps\FormRequest\Traits\HasFormValidation\HasFormValidation;
   use RiseTechApps\FormRequest\ValidationRuleRepository;
   
   class StoreClientRequest extends FormRequest
   {
-    use hasFormValidation;
+    use HasFormValidation;
 
     protected ValidationRuleRepository $ruleRepository;
 
