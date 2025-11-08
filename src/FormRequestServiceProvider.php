@@ -8,6 +8,8 @@ use Illuminate\Support\ServiceProvider;
 use RiseTechApps\FormRequest\Commands\MigrateCommand;
 use RiseTechApps\FormRequest\Commands\SeedCommand;
 use RiseTechApps\FormRequest\Contracts\ValidatorContract;
+use RiseTechApps\FormRequest\FormDefinitions\FormRegistry;
+use RiseTechApps\FormRequest\Services\FormManager;
 
 
 class FormRequestServiceProvider extends ServiceProvider
@@ -53,7 +55,12 @@ class FormRequestServiceProvider extends ServiceProvider
             return new FormRequest;
         });
 
+        $this->app->singleton(FormRegistry::class, function () {
+            return new FormRegistry(Rules::defaultRules());
+        });
+
         $this->app->singleton(ValidationRuleRepository::class);
+        $this->app->singleton(FormManager::class);
     }
 
     private function registerRules(): void
@@ -107,10 +114,28 @@ class FormRequestServiceProvider extends ServiceProvider
             });
         }
 
-        if(!ResponseFactory::hasMacro('jsonNotValidated')) {
-            ResponseFactory::macro('jsonNotValidated', function ($message = null, $error = null) {
+        if(!ResponseFactory::hasMacro('jsonNotFound')) {
+            ResponseFactory::macro('jsonNotFound', function ($data = null) {
                 $response = ['success' => false];
-                if (!is_null($message)) $response['message'] = $message;
+                if (!is_null($data)) {
+                    $response['message'] = $data;
+                }
+
+                return response()->json($response, 404);
+            });
+        }
+
+        if(!ResponseFactory::hasMacro('jsonNotValidated')) {
+            ResponseFactory::macro('jsonNotValidated', function ($message = null, $errors = null, array $extras = []) {
+                $response = array_merge(['success' => false], $extras);
+
+                if (!is_null($message)) {
+                    $response['message'] = $message;
+                }
+
+                if (!is_null($errors)) {
+                    $response['errors'] = $errors;
+                }
 
                 return response()->json($response, 422);
             });
