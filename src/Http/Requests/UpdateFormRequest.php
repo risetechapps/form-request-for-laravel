@@ -3,12 +3,12 @@
 namespace RiseTechApps\FormRequest\Http\Requests;
 
 /**
- * Form request responsible for validating updates to existing dynamic forms.
+ * Form request responsável por validar atualizações em formulários dinâmicos existentes.
  */
 class UpdateFormRequest extends DynamicFormRequest
 {
     /**
-     * Determine if the authenticated user may update the form definition.
+     * Determina se o usuário autenticado pode atualizar a definição do formulário.
      */
     public function authorize(): bool
     {
@@ -26,7 +26,7 @@ class UpdateFormRequest extends DynamicFormRequest
     }
 
     /**
-     * Use the default form request definition for persistence.
+     * Utiliza a definição padrão de formulário para persistência.
      */
     protected function formKey(): string
     {
@@ -34,7 +34,7 @@ class UpdateFormRequest extends DynamicFormRequest
     }
 
     /**
-     * Provide the identifier for unique rule adjustments during updates.
+     * Fornece o identificador para ajustar regras de unique durante atualizações.
      *
      * @return array<string, string>
      */

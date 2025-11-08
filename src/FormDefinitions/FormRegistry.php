@@ -5,7 +5,7 @@ namespace RiseTechApps\FormRequest\FormDefinitions;
 use Illuminate\Support\Arr;
 
 /**
- * In-memory registry responsible for tracking dynamic form definitions.
+ * Registro em memória responsável por controlar definições de formulários dinâmicos.
  */
 class FormRegistry
 {
@@ -15,7 +15,7 @@ class FormRegistry
     private array $forms = [];
 
     /**
-     * Seed the registry with an optional list of definitions.
+     * Inicializa o registro com uma lista opcional de definições.
      *
      * @param array<string, array<string, mixed>|array<int, mixed>> $definitions
      */
@@ -25,12 +25,12 @@ class FormRegistry
     }
 
     /**
-     * Register a single form definition in the registry.
+     * Registra uma única definição de formulário no registro.
      *
-     * @param string $name Unique name for the form definition.
-     * @param array<string, mixed> $rules Validation rules for the form.
-     * @param array<string, string> $messages Custom validation messages.
-     * @param array<string, mixed> $metadata Additional metadata payload.
+     * @param string $name Nome único da definição de formulário.
+     * @param array<string, mixed> $rules Regras de validação do formulário.
+     * @param array<string, string> $messages Mensagens de validação personalizadas.
+     * @param array<string, mixed> $metadata Metadados adicionais.
      */
     public function register(string $name, array $rules, array $messages = [], array $metadata = []): void
     {
@@ -38,7 +38,7 @@ class FormRegistry
     }
 
     /**
-     * Register multiple form definitions at once.
+     * Registra várias definições de formulário de uma só vez.
      *
      * @param array<string, mixed> $definitions
      */
@@ -65,7 +65,7 @@ class FormRegistry
     }
 
     /**
-     * Retrieve all registered form definitions.
+     * Recupera todas as definições de formulário registradas.
      *
      * @return array<string, FormDefinition>
      */
@@ -75,7 +75,7 @@ class FormRegistry
     }
 
     /**
-     * Get a specific form definition by name.
+     * Obtém uma definição de formulário específica pelo nome.
      */
     public function get(string $name): ?FormDefinition
     {
@@ -83,7 +83,7 @@ class FormRegistry
     }
 
     /**
-     * Determine if a form definition has been registered.
+     * Verifica se uma definição de formulário foi registrada.
      */
     public function has(string $name): bool
     {
@@ -91,7 +91,7 @@ class FormRegistry
     }
 
     /**
-     * Remove a form definition from the registry.
+     * Remove uma definição de formulário do registro.
      */
     public function forget(string $name): void
     {

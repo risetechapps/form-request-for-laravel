@@ -12,12 +12,12 @@ use RiseTechApps\FormRequest\FormDefinitions\FormRegistry;
 use RiseTechApps\FormRequest\Services\FormManager;
 
 /**
- * Package service provider responsible for bootstrapping configuration and bindings.
+ * Service provider do pacote responsável por inicializar configurações e bindings.
  */
 class FormRequestServiceProvider extends ServiceProvider
 {
     /**
-     * Bootstrap the application services.
+     * Inicializa os serviços da aplicação.
      */
     public function boot(): void
     {
@@ -43,7 +43,7 @@ class FormRequestServiceProvider extends ServiceProvider
     }
 
     /**
-     * Register the application services.
+     * Registra os serviços da aplicação.
      */
     public function register(): void
     {
@@ -66,7 +66,7 @@ class FormRequestServiceProvider extends ServiceProvider
     }
 
     /**
-     * Register custom validation rules defined by the package and configuration.
+     * Registra regras de validação personalizadas definidas pelo pacote e pela configuração.
      */
     private function registerRules(): void
     {
@@ -93,7 +93,7 @@ class FormRequestServiceProvider extends ServiceProvider
     }
 
     /**
-     * Register response macros used for standardized JSON payloads.
+     * Registra macros de resposta utilizadas para padronizar retornos JSON.
      */
     protected function registerMacros(): void
     {

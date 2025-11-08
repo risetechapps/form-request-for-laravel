@@ -1,7 +1,7 @@
 <?php
 
 /*
- * You can place your custom package configuration in here.
+ * Você pode colocar a configuração personalizada do pacote aqui.
  */
 return [
 
@@ -19,7 +19,7 @@ return [
         //         'email.unique' => 'validation.email_unique',
         //     ],
         //     'metadata' => [
-        //         'description' => 'Default rules for user registration forms.',
+        //         'description' => 'Regras padrão para formulários de cadastro de usuário.',
         //     ],
         // ],
     ],

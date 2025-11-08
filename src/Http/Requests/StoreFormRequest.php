@@ -3,12 +3,12 @@
 namespace RiseTechApps\FormRequest\Http\Requests;
 
 /**
- * Form request responsible for validating creation of dynamic form records.
+ * Form request responsável por validar a criação de registros de formulários dinâmicos.
  */
 class StoreFormRequest extends DynamicFormRequest
 {
     /**
-     * Determine if the authenticated user may create a new form definition.
+     * Determina se o usuário autenticado pode criar uma nova definição de formulário.
      */
     public function authorize(): bool
     {
@@ -26,7 +26,7 @@ class StoreFormRequest extends DynamicFormRequest
     }
 
     /**
-     * Use the default form request definition for persistence.
+     * Utiliza a definição padrão de formulário para persistência.
      */
     protected function formKey(): string
     {

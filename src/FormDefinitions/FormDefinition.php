@@ -3,17 +3,17 @@
 namespace RiseTechApps\FormRequest\FormDefinitions;
 
 /**
- * Immutable value object representing a dynamic form definition.
+ * Objeto de valor imutável que representa uma definição de formulário dinâmico.
  */
 final class FormDefinition
 {
     /**
-     * Create a new form definition instance.
+     * Cria uma nova instância de definição de formulário.
      *
-     * @param string $name Identifier for the form definition.
-     * @param array<string, mixed> $rules Validation rules associated with the form.
-     * @param array<string, string> $messages Optional validation message overrides.
-     * @param array<string, mixed> $metadata Arbitrary metadata stored with the form.
+     * @param string $name Identificador da definição de formulário.
+     * @param array<string, mixed> $rules Regras de validação associadas ao formulário.
+     * @param array<string, string> $messages Mensagens de validação opcionais.
+     * @param array<string, mixed> $metadata Metadados adicionais armazenados com o formulário.
      */
     public function __construct(
         private readonly string $name,
@@ -24,7 +24,7 @@ final class FormDefinition
     }
 
     /**
-     * Retrieve the unique name of the form definition.
+     * Recupera o nome único da definição de formulário.
      */
     public function name(): string
     {
@@ -32,7 +32,7 @@ final class FormDefinition
     }
 
     /**
-     * Get the validation rules associated with the form.
+     * Obtém as regras de validação associadas ao formulário.
      *
      * @return array<string, mixed>
      */
@@ -42,7 +42,7 @@ final class FormDefinition
     }
 
     /**
-     * Get the custom validation messages defined for the form.
+     * Obtém as mensagens de validação personalizadas definidas para o formulário.
      *
      * @return array<string, string>
      */
@@ -52,7 +52,7 @@ final class FormDefinition
     }
 
     /**
-     * Get the supplementary metadata linked to the form definition.
+     * Obtém os metadados complementares vinculados à definição de formulário.
      *
      * @return array<string, mixed>
      */

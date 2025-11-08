@@ -7,11 +7,11 @@ use Tpetry\PostgresqlEnhanced\Support\Facades\Schema;
 
 return new class extends Migration {
     /**
-     * Run the migrations.
+     * Executa as migrações.
      */
     public function up(): void
     {
-        // Enable required PostgreSQL extensions when the connection supports them.
+        // Habilita as extensões do PostgreSQL quando a conexão oferece suporte.
         if (DB::getDriverName() === 'pgsql') {
             Schema::createExtensionIfNotExists('citext');
         }
@@ -19,25 +19,25 @@ return new class extends Migration {
         $usesPostgres = DB::getDriverName() === 'pgsql';
 
         Schema::create('form_requests', function (Blueprint $table) use ($usesPostgres) {
-            // Primary identifier relies on UUIDs so forms can be shared across services safely.
+            // O identificador primário usa UUID para permitir compartilhamento seguro entre serviços.
             $table->uuid('id')->primary();
 
-            // Store the human readable form key using a case-insensitive column on PostgreSQL.
+            // Armazena a chave legível do formulário usando coluna case-insensitive no PostgreSQL.
             if ($usesPostgres) {
                 $table->caseInsensitiveText('form')->nullable();
             } else {
                 $table->string('form')->nullable();
             }
 
-            // Persist validation rules and any explicit messages using JSON/JSONB depending on the driver.
+            // Persiste regras de validação e mensagens utilizando JSON/JSONB conforme o driver.
             $jsonColumn = $usesPostgres ? 'jsonb' : 'json';
             $table->{$jsonColumn}('rules')->nullable();
             $table->{$jsonColumn}('messages')->nullable();
 
-            // Allow integrators to attach arbitrary metadata alongside each dynamic form definition.
+            // Permite anexar metadados arbitrários em cada definição de formulário dinâmico.
             $table->{$jsonColumn}('data')->nullable();
 
-            // Optional textual description to aid administrative tooling.
+            // Descrição opcional para auxiliar ferramentas administrativas.
             $table->string('description')->nullable();
 
             $table->timestamps();
@@ -46,7 +46,7 @@ return new class extends Migration {
     }
 
     /**
-     * Reverse the migrations.
+     * Reverte as migrações.
      */
     public function down(): void
     {

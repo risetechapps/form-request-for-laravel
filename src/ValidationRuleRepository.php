@@ -10,7 +10,7 @@ use RiseTechApps\FormRequest\FormDefinitions\FormRegistry;
 use RiseTechApps\FormRequest\Models\FormRequest as FormRequestModel;
 
 /**
- * Repository responsible for resolving validation rules from persistence, configuration, and cache.
+ * Repositório responsável por resolver regras de validação do banco, da configuração e do cache.
  */
 class ValidationRuleRepository
 {
@@ -24,7 +24,7 @@ class ValidationRuleRepository
     private int $cacheTtl;
 
     /**
-     * Configure the repository dependencies and cache behavior.
+     * Configura as dependências do repositório e o comportamento do cache.
      */
     public function __construct(
         private readonly FormRequestModel $forms,
@@ -39,9 +39,9 @@ class ValidationRuleRepository
     }
 
     /**
-     * Resolve the validation rules for the given form name and context.
+     * Resolve as regras de validação para o formulário informado e contexto adicional.
      *
-     * @param array<string, mixed> $parameter Additional filters to scope the query.
+     * @param array<string, mixed> $parameter Filtros adicionais para escopo da consulta.
      * @return array{rules: array<string, mixed>, messages: array<string, string>}
      */
     public function getRules(string $name, array $parameter = []): array
@@ -65,7 +65,7 @@ class ValidationRuleRepository
     }
 
     /**
-     * Flush cached rules and registry keys for the provided form name.
+     * Limpa as regras em cache e as chaves registradas para o formulário informado.
      */
     public function clearCache(string $name): void
     {
@@ -84,7 +84,7 @@ class ValidationRuleRepository
     }
 
     /**
-     * Generate default messages for each validation rule entry.
+     * Gera mensagens padrão para cada regra de validação.
      *
      * @param array<string, mixed> $rules
      * @return array<string, string>
@@ -101,7 +101,7 @@ class ValidationRuleRepository
     }
 
     /**
-     * Normalize rule definitions into translation keys.
+     * Normaliza definições de regras em chaves de tradução.
      *
      * @param mixed $rulesDefinition
      * @return array<string, string>
@@ -128,7 +128,7 @@ class ValidationRuleRepository
     }
 
     /**
-     * Adjust unique rules with the provided identifier during updates.
+     * Ajusta regras de unique com o identificador informado durante atualizações.
      *
      * @param array<int, mixed> $rules
      * @return array<int, mixed>
@@ -162,7 +162,7 @@ class ValidationRuleRepository
     }
 
     /**
-     * Load rules stored in the database for the provided form name.
+     * Carrega as regras armazenadas no banco para o formulário informado.
      *
      * @param array<string, mixed> $parameter
      * @return array{rules: array<string, mixed>, messages: array<string, string>}
@@ -196,7 +196,7 @@ class ValidationRuleRepository
     }
 
     /**
-     * Load rules defined in configuration for the provided form name.
+     * Carrega as regras definidas na configuração para o formulário informado.
      *
      * @return array{rules: array<string, mixed>, messages: array<string, string>}
      */
@@ -225,7 +225,7 @@ class ValidationRuleRepository
     }
 
     /**
-     * Build the cache key for a specific form and parameter set.
+     * Monta a chave de cache para um formulário e conjunto de parâmetros.
      *
      * @param array<string, mixed> $parameter
      */
@@ -241,7 +241,7 @@ class ValidationRuleRepository
     }
 
     /**
-     * Remember a callback value using the configured cache store when enabled.
+     * Armazena o resultado de um callback usando o cache configurado quando habilitado.
      *
      * @param array<string, mixed> $parameter
      * @param callable(): array{rules: array<string, mixed>, messages: array<string, string>} $callback
@@ -264,7 +264,7 @@ class ValidationRuleRepository
     }
 
     /**
-     * Track cache keys used for a form to allow targeted invalidation.
+     * Registra as chaves de cache usadas para um formulário permitindo invalidação direcionada.
      */
     private function storeCacheKey(string $name, string $cacheKey): void
     {
@@ -278,7 +278,7 @@ class ValidationRuleRepository
     }
 
     /**
-     * Build the registry key used to store cache key references.
+     * Monta a chave de registro utilizada para armazenar as referências de cache.
      */
     private function cacheRegistryKey(string $name): string
     {

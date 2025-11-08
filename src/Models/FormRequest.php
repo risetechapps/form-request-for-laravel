@@ -9,7 +9,7 @@ use RiseTechApps\HasUuid\Traits\HasUuid\HasUuid;
 use RiseTechApps\Monitoring\Traits\HasLoggly\HasLoggly;
 
 /**
- * Eloquent model representing persisted dynamic form definitions.
+ * Modelo Eloquent que representa definições de formulários dinâmicos persistidos.
  */
 class FormRequest extends Model
 {

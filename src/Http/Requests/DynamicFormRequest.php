@@ -9,7 +9,7 @@ use RiseTechApps\FormRequest\Traits\HasFormValidation\HasFormValidation;
 use RiseTechApps\FormRequest\ValidationRuleRepository;
 
 /**
- * Base form request capable of resolving rules dynamically from storage or configuration.
+ * Form request base capaz de resolver regras dinamicamente a partir do banco ou da configuração.
  */
 abstract class DynamicFormRequest extends FormRequest
 {
@@ -26,7 +26,7 @@ abstract class DynamicFormRequest extends FormRequest
     protected array $resolvedMessages = [];
 
     /**
-     * Inject the rule repository while preserving the default FormRequest constructor signature.
+     * Injeta o repositório de regras preservando a assinatura padrão do construtor de FormRequest.
      */
     public function __construct(
         protected ValidationRuleRepository $validatorRuleRepository,
@@ -42,12 +42,12 @@ abstract class DynamicFormRequest extends FormRequest
     }
 
     /**
-     * The registry key used to resolve the form definition.
+     * Chave do registro utilizada para resolver a definição do formulário.
      */
     abstract protected function formKey(): string;
 
     /**
-     * Additional context passed to rule resolution.
+     * Contexto adicional repassado para a resolução das regras.
      *
      * @return array<string, mixed>
      */
@@ -57,7 +57,7 @@ abstract class DynamicFormRequest extends FormRequest
     }
 
     /**
-     * Resolve the dynamic validation rules at runtime.
+     * Resolve dinamicamente as regras de validação em tempo de execução.
      *
      * @return array<string, mixed>
      */
@@ -69,7 +69,7 @@ abstract class DynamicFormRequest extends FormRequest
     }
 
     /**
-     * Resolve translated validation messages for the request.
+     * Resolve as mensagens de validação traduzidas para o request.
      *
      * @return array<string, string>
      */
@@ -81,7 +81,7 @@ abstract class DynamicFormRequest extends FormRequest
     }
 
     /**
-     * Translate message keys using package, application, or default validation strings.
+     * Traduz as chaves de mensagem usando textos do pacote, da aplicação ou padrões do Laravel.
      *
      * @param array<string, string> $messages
      * @return array<string, string>
@@ -117,7 +117,7 @@ abstract class DynamicFormRequest extends FormRequest
     }
 
     /**
-     * Cache the resolved rule definition for subsequent calls.
+     * Armazena em cache a definição de regras resolvida para chamadas subsequentes.
      */
     protected function resolveDefinition(): void
     {

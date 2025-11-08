@@ -6,12 +6,12 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * API resource transforming stored form requests into JSON arrays.
+ * Resource de API que transforma formulários armazenados em arrays JSON.
  */
 class FormRequestResource extends JsonResource
 {
     /**
-     * Transform the resource into an array.
+     * Transforma o resource em um array.
      */
     public function toArray(Request $request): array
     {
