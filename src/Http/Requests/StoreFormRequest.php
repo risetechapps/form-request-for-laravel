@@ -2,46 +2,26 @@
 
 namespace RiseTechApps\FormRequest\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
-use RiseTechApps\FormRequest\Traits\hasFormValidation\hasFormValidation;
-use RiseTechApps\FormRequest\ValidationRuleRepository;
-
-class StoreFormRequest extends FormRequest
+class StoreFormRequest extends DynamicFormRequest
 {
-    use hasFormValidation;
-    protected ValidationRuleRepository $validatorRuleRepository;
-
-    protected array $rules = [];
-    protected array $messages = [];
-
-    public function __construct(ValidationRuleRepository $validatorRuleRepository, array $query = [], array $request = [], array $attributes = [], array $cookies = [], array $files = [], array $server = [], $content = null)
-    {
-        parent::__construct($query, $request, $attributes, $cookies, $files, $server, $content);
-
-        $this->validatorRuleRepository = $validatorRuleRepository;
-
-        $data = $this->validatorRuleRepository->getRules('form_request' );
-
-        $this->rules = $data['rules'];
-        $this->messages = $data['messages'];
-    }
-
     public function authorize(): bool
     {
-        $module = get_class(request()->route()->getController()) . '@' . request()->route()->getActionMethod();
-        return auth()->check() && auth()->user()->hasPermission($module);
+        $route = $this->route();
+
+        if ($route === null) {
+            return false;
+        }
+
+        $module = get_class($route->getController()) . '@' . $route->getActionMethod();
+
+        $user = $this->user();
+
+        return $user !== null && $user->hasPermission($module);
     }
 
-    public function rules(): array
+    protected function formKey(): string
     {
-        return $this->rules;
-    }
-
-    public function messages(): array
-    {
-        return array_map(function ($value) {
-            return __('formrequest::validation.' . $value);
-        }, $this->result['messages']);
+        return 'form_request';
     }
 
 }
