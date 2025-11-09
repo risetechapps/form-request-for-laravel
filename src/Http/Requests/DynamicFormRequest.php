@@ -8,10 +8,26 @@ use Illuminate\Support\Str;
 use RiseTechApps\FormRequest\Traits\HasFormValidation\HasFormValidation;
 use RiseTechApps\FormRequest\ValidationRuleRepository;
 
+/**
+ * Form request base capaz de resolver regras dinamicamente a partir do banco ou da configuração.
+ */
 abstract class DynamicFormRequest extends FormRequest
 {
     use HasFormValidation;
 
+    /**
+     * @var array<string, mixed>
+     */
+    protected array $resolvedRules = [];
+
+    /**
+     * @var array<string, string>
+     */
+    protected array $resolvedMessages = [];
+
+    /**
+     * Injeta o repositório de regras preservando a assinatura padrão do construtor de FormRequest.
+     */
     protected array $resolvedRules = [];
 
     protected array $resolvedMessages = [];
@@ -29,6 +45,16 @@ abstract class DynamicFormRequest extends FormRequest
         parent::__construct($query, $request, $attributes, $cookies, $files, $server, $content);
     }
 
+    /**
+     * Chave do registro utilizada para resolver a definição do formulário.
+     */
+    abstract protected function formKey(): string;
+
+    /**
+     * Contexto adicional repassado para a resolução das regras.
+     *
+     * @return array<string, mixed>
+     */
     abstract protected function formKey(): string;
 
     protected function validationContext(): array
@@ -36,6 +62,11 @@ abstract class DynamicFormRequest extends FormRequest
         return [];
     }
 
+    /**
+     * Resolve dinamicamente as regras de validação em tempo de execução.
+     *
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         $this->resolveDefinition();
@@ -43,6 +74,11 @@ abstract class DynamicFormRequest extends FormRequest
         return $this->resolvedRules;
     }
 
+    /**
+     * Resolve as mensagens de validação traduzidas para o request.
+     *
+     * @return array<string, string>
+     */
     public function messages(): array
     {
         $this->resolveDefinition();
@@ -50,6 +86,12 @@ abstract class DynamicFormRequest extends FormRequest
         return $this->translateMessages($this->resolvedMessages);
     }
 
+    /**
+     * Traduz as chaves de mensagem usando textos do pacote, da aplicação ou padrões do Laravel.
+     *
+     * @param array<string, string> $messages
+     * @return array<string, string>
+     */
     protected function translateMessages(array $messages): array
     {
         return array_map(function (string $value) {
@@ -80,6 +122,9 @@ abstract class DynamicFormRequest extends FormRequest
         }, $messages);
     }
 
+    /**
+     * Armazena em cache a definição de regras resolvida para chamadas subsequentes.
+     */
     protected function resolveDefinition(): void
     {
         if (!empty($this->resolvedRules)) {

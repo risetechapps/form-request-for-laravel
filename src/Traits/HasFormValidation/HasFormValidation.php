@@ -11,7 +11,10 @@ use Illuminate\Support\Arr;
 trait HasFormValidation
 {
     /**
-     * Handle a failed validation attempt.
+     * Trata uma tentativa de validação que falhou.
+     *
+     * @param Validator $validator
+     * @return never
      */
     protected function failedValidation(Validator $validator)
     {
@@ -25,7 +28,9 @@ trait HasFormValidation
     }
 
     /**
-     * Handle a failed authorization attempt.
+     * Trata uma tentativa de autorização que falhou.
+     *
+     * @return never
      */
     protected function failedAuthorization()
     {
@@ -44,23 +49,29 @@ trait HasFormValidation
     }
 
     /**
-     * Resolve the translated validation error message.
+     * Retorna a mensagem traduzida para erro de validação.
+     *
+     * @return string|null
      */
     protected function validationErrorMessage(): ?string
     {
-        return __('The data provided is invalid.');
+        return __('Os dados informados são inválidos.');
     }
 
     /**
-     * Resolve the translated authorization error message.
+     * Retorna a mensagem traduzida para erro de autorização.
+     *
+     * @return string|null
      */
     protected function authorizationErrorMessage(): ?string
     {
-        return __('Permission denied.');
+        return __('Permissão negada.');
     }
 
     /**
-     * Additional payload merged into validation error responses.
+     * Dados adicionais mesclados na resposta de erro de validação.
+     *
+     * @return array<string, mixed>
      */
     protected function validationErrorExtras(Validator $validator): array
     {
@@ -72,7 +83,9 @@ trait HasFormValidation
     }
 
     /**
-     * Additional payload merged into authorization error responses.
+     * Dados adicionais mesclados na resposta de erro de autorização.
+     *
+     * @return array<string, mixed>
      */
     protected function authorizationErrorExtras(): array
     {
@@ -84,7 +97,11 @@ trait HasFormValidation
     }
 
     /**
-     * Create the JSON response for validation failures while honouring package macros.
+     * Cria a resposta JSON para falhas de validação respeitando as macros do pacote.
+     *
+     * @param string|null $message
+     * @param mixed $errors
+     * @param array<string, mixed> $extras
      */
     protected function jsonNotValidatedResponse(?string $message, $errors, array $extras = []): JsonResponse
     {

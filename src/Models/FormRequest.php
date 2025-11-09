@@ -8,6 +8,9 @@ use Illuminate\Notifications\Notifiable;
 use RiseTechApps\HasUuid\Traits\HasUuid\HasUuid;
 use RiseTechApps\Monitoring\Traits\HasLoggly\HasLoggly;
 
+/**
+ * Modelo Eloquent que representa definições de formulários dinâmicos persistidos.
+ */
 class FormRequest extends Model
 {
     use HasFactory, Notifiable, HasUuid, HasLoggly;

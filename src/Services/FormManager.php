@@ -10,6 +10,14 @@ use RiseTechApps\FormRequest\FormDefinitions\FormRegistry;
 use RiseTechApps\FormRequest\Models\FormRequest as FormRequestModel;
 use RiseTechApps\FormRequest\ValidationRuleRepository;
 
+/**
+ * Camada de serviço responsável por coordenar persistência e cache dos formulários dinâmicos.
+ */
+class FormManager
+{
+    /**
+     * Cria uma nova instância do gerenciador de formulários.
+     */
 class FormManager
 {
     public function __construct(
@@ -20,6 +28,10 @@ class FormManager
     }
 
     /**
+     * Lista formulários dinâmicos aplicando paginação e filtros opcionais.
+     *
+     * @param int|null $perPage Quantidade de registros por página ou null para todos.
+     * @param array<string, mixed> $filters Filtros opcionais aceitos pelo repositório.
      * @return Collection<int, FormRequestModel>|LengthAwarePaginator<FormRequestModel>
      */
     public function list(?int $perPage = 15, array $filters = []): Collection|LengthAwarePaginator
@@ -37,11 +49,19 @@ class FormManager
         return $query->paginate($perPage);
     }
 
+    /**
+     * Recupera um formulário armazenado ou lança exceção caso não exista.
+     */
     public function findOrFail(string $id): FormRequestModel
     {
         return $this->forms->newQuery()->findOrFail($id);
     }
 
+    /**
+     * Persiste uma nova definição de formulário.
+     *
+     * @param array<string, mixed> $attributes
+     */
     public function create(array $attributes): FormRequestModel
     {
         $form = $this->forms->create($attributes);
@@ -51,6 +71,11 @@ class FormManager
         return $form;
     }
 
+    /**
+     * Atualiza uma instância existente de definição de formulário.
+     *
+     * @param array<string, mixed> $attributes
+     */
     public function update(FormRequestModel $form, array $attributes): FormRequestModel
     {
         $form->fill($attributes);
@@ -61,6 +86,9 @@ class FormManager
         return $form;
     }
 
+    /**
+     * Remove o modelo de definição de formulário informado.
+     */
     public function delete(FormRequestModel $form): void
     {
         $formName = $form->form;
@@ -69,18 +97,26 @@ class FormManager
         $this->flushCache($formName);
     }
 
+    /**
+     * Remove uma definição de formulário pelo identificador primário.
+     */
     public function deleteById(string $id): void
     {
         $form = $this->findOrFail($id);
         $this->delete($form);
     }
 
+    /**
+     * Limpa as entradas de cache de regras para um formulário.
+     */
     private function flushCache(string $formName): void
     {
         $this->rules->clearCache($formName);
     }
 
     /**
+     * Retorna as definições de formulário configuradas em memória.
+     *
      * @return array<string, FormDefinition>
      */
     public function configured(): array

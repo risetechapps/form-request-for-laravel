@@ -9,6 +9,9 @@ use RiseTechApps\FormRequest\FormDefinitions\FormDefinition;
 use RiseTechApps\FormRequest\FormDefinitions\FormRegistry;
 use RiseTechApps\FormRequest\Models\FormRequest as FormRequestModel;
 
+/**
+ * Repositório responsável por resolver regras de validação do banco, da configuração e do cache.
+ */
 class ValidationRuleRepository
 {
     private const CACHE_KEY_PREFIX = 'form-request:';
@@ -20,6 +23,9 @@ class ValidationRuleRepository
 
     private int $cacheTtl;
 
+    /**
+     * Configura as dependências do repositório e o comportamento do cache.
+     */
     public function __construct(
         private readonly FormRequestModel $forms,
         CacheFactory $cacheFactory,
@@ -32,6 +38,12 @@ class ValidationRuleRepository
         $this->cache = $store ? $cacheFactory->store($store) : $cacheFactory->store();
     }
 
+    /**
+     * Resolve as regras de validação para o formulário informado e contexto adicional.
+     *
+     * @param array<string, mixed> $parameter Filtros adicionais para escopo da consulta.
+     * @return array{rules: array<string, mixed>, messages: array<string, string>}
+     */
     public function getRules(string $name, array $parameter = []): array
     {
         $cachedParameters = Arr::except($parameter, ['id']);
@@ -52,6 +64,9 @@ class ValidationRuleRepository
         return $validationRules;
     }
 
+    /**
+     * Limpa as regras em cache e as chaves registradas para o formulário informado.
+     */
     public function clearCache(string $name): void
     {
         if (!$this->cacheEnabled) {
@@ -68,6 +83,12 @@ class ValidationRuleRepository
         $this->cache->forget($this->cacheKey($name));
     }
 
+    /**
+     * Gera mensagens padrão para cada regra de validação.
+     *
+     * @param array<string, mixed> $rules
+     * @return array<string, string>
+     */
     protected function generateMessages(array $rules): array
     {
         $messages = [];
@@ -79,6 +100,12 @@ class ValidationRuleRepository
         return $messages;
     }
 
+    /**
+     * Normaliza definições de regras em chaves de tradução.
+     *
+     * @param mixed $rulesDefinition
+     * @return array<string, string>
+     */
     protected function extractRules(string $field, mixed $rulesDefinition): array
     {
         $rules = is_array($rulesDefinition) ? $rulesDefinition : explode('|', (string) $rulesDefinition);
@@ -100,6 +127,12 @@ class ValidationRuleRepository
         return $formattedRules;
     }
 
+    /**
+     * Ajusta regras de unique com o identificador informado durante atualizações.
+     *
+     * @param array<int, mixed> $rules
+     * @return array<int, mixed>
+     */
     private function setIdUpdate(mixed $id, array $rules): array
     {
         return array_map(function ($rule) use ($id) {
@@ -128,6 +161,12 @@ class ValidationRuleRepository
         }, $rules);
     }
 
+    /**
+     * Carrega as regras armazenadas no banco para o formulário informado.
+     *
+     * @param array<string, mixed> $parameter
+     * @return array{rules: array<string, mixed>, messages: array<string, string>}
+     */
     private function fetchRulesFromDatabase(string $name, array $parameter = []): array
     {
         $where = array_merge(['form' => $name], $parameter);
@@ -156,6 +195,11 @@ class ValidationRuleRepository
         ];
     }
 
+    /**
+     * Carrega as regras definidas na configuração para o formulário informado.
+     *
+     * @return array{rules: array<string, mixed>, messages: array<string, string>}
+     */
     private function fetchRulesFromConfiguration(string $name): array
     {
         $definition = $this->registry->get($name);
@@ -180,6 +224,11 @@ class ValidationRuleRepository
         ];
     }
 
+    /**
+     * Monta a chave de cache para um formulário e conjunto de parâmetros.
+     *
+     * @param array<string, mixed> $parameter
+     */
     private function cacheKey(string $name, array $parameter = []): string
     {
         if (empty($parameter)) {
@@ -191,6 +240,13 @@ class ValidationRuleRepository
         return sprintf('%s%s:%s', self::CACHE_KEY_PREFIX, $name, md5(json_encode($parameter)));
     }
 
+    /**
+     * Armazena o resultado de um callback usando o cache configurado quando habilitado.
+     *
+     * @param array<string, mixed> $parameter
+     * @param callable(): array{rules: array<string, mixed>, messages: array<string, string>} $callback
+     * @return array{rules: array<string, mixed>, messages: array<string, string>}
+     */
     private function remember(string $name, array $parameter, callable $callback): array
     {
         if (!$this->cacheEnabled) {
@@ -207,6 +263,9 @@ class ValidationRuleRepository
         });
     }
 
+    /**
+     * Registra as chaves de cache usadas para um formulário permitindo invalidação direcionada.
+     */
     private function storeCacheKey(string $name, string $cacheKey): void
     {
         $registryKey = $this->cacheRegistryKey($name);
@@ -218,6 +277,9 @@ class ValidationRuleRepository
         }
     }
 
+    /**
+     * Monta a chave de registro utilizada para armazenar as referências de cache.
+     */
     private function cacheRegistryKey(string $name): string
     {
         return self::CACHE_KEY_REGISTRY . $name;

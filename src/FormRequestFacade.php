@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Facade;
 class FormRequestFacade extends Facade
 {
     /**
-     * Get the registered name of the component.
+     * Obtém o nome registrado do componente.
      *
      * @return string
      */

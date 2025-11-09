@@ -13,12 +13,21 @@ use RiseTechApps\FormRequest\FormDefinitions\FormDefinition;
 use RiseTechApps\FormRequest\Services\FormManager;
 use Throwable;
 
+/**
+ * Controller de API que expõe endpoints CRUD para formulários dinâmicos.
+ */
 class FormController extends Controller
 {
+    /**
+     * Injeta o serviço de formulários responsável pelo acesso aos dados.
+     */
     public function __construct(private readonly FormManager $forms)
     {
     }
 
+    /**
+     * Lista os formulários armazenados com paginação opcional e metadados do registro.
+     */
     public function index(Request $request): JsonResponse
     {
         try {
@@ -57,6 +66,9 @@ class FormController extends Controller
         }
     }
 
+    /**
+     * Persiste uma nova definição de formulário dinâmico.
+     */
     public function store(StoreFormRequest $request): JsonResponse
     {
         try {
@@ -74,6 +86,9 @@ class FormController extends Controller
         }
     }
 
+    /**
+     * Exibe uma definição de formulário específica.
+     */
     public function show(Request $request): JsonResponse
     {
         try {
@@ -95,6 +110,9 @@ class FormController extends Controller
         }
     }
 
+    /**
+     * Atualiza um registro existente de definição de formulário.
+     */
     public function update(UpdateFormRequest $request): JsonResponse
     {
 
@@ -118,6 +136,9 @@ class FormController extends Controller
         }
     }
 
+    /**
+     * Remove a definição de formulário informada.
+     */
     public function destroy(Request $request): JsonResponse
     {
         try {

@@ -11,11 +11,13 @@ use RiseTechApps\FormRequest\Contracts\ValidatorContract;
 use RiseTechApps\FormRequest\FormDefinitions\FormRegistry;
 use RiseTechApps\FormRequest\Services\FormManager;
 
-
+/**
+ * Service provider do pacote responsável por inicializar configurações e bindings.
+ */
 class FormRequestServiceProvider extends ServiceProvider
 {
     /**
-     * Bootstrap the application services.
+     * Inicializa os serviços da aplicação.
      */
     public function boot(): void
     {
@@ -30,9 +32,9 @@ class FormRequestServiceProvider extends ServiceProvider
             SeedCommand::class,
 
         ]);
-        
+
         $this->loadTranslationsFrom(__DIR__ . '/../resources/lang', 'formrequest');
-        
+
         $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
 
         $this->registerRules();
@@ -41,7 +43,7 @@ class FormRequestServiceProvider extends ServiceProvider
     }
 
     /**
-     * Register the application services.
+     * Registra os serviços da aplicação.
      */
     public function register(): void
     {
@@ -63,6 +65,9 @@ class FormRequestServiceProvider extends ServiceProvider
         $this->app->singleton(FormManager::class);
     }
 
+    /**
+     * Registra regras de validação personalizadas definidas pelo pacote e pela configuração.
+     */
     private function registerRules(): void
     {
         $validatorConfig = config('rules.validators') ?? [];
@@ -87,33 +92,42 @@ class FormRequestServiceProvider extends ServiceProvider
         }
     }
 
+    /**
+     * Registra macros de resposta utilizadas para padronizar retornos JSON.
+     */
     protected function registerMacros(): void
     {
-
-        if(!ResponseFactory::hasMacro('jsonSuccess')){
+        if (!ResponseFactory::hasMacro('jsonSuccess')) {
             ResponseFactory::macro('jsonSuccess', function ($data = []) {
                 $response = ['success' => true];
-                if (!empty($data)) $response['data'] = $data;
+                if (!empty($data)) {
+                    $response['data'] = $data;
+                }
                 return response()->json($response);
             });
         }
 
-        if(!ResponseFactory::hasMacro('jsonError')){
+        if (!ResponseFactory::hasMacro('jsonError')) {
             ResponseFactory::macro('jsonError', function ($data = null) {
                 $response = ['success' => false];
-                if (!is_null($data)) $response['message'] = $data;
+                if (!is_null($data)) {
+                    $response['message'] = $data;
+                }
                 return response()->json($response, 412);
             });
         }
 
-        if(!ResponseFactory::hasMacro('jsonGone')) {
+        if (!ResponseFactory::hasMacro('jsonGone')) {
             ResponseFactory::macro('jsonGone', function ($data = null) {
                 $response = ['success' => false];
-                if (!is_null($data)) $response['message'] = $data;
+                if (!is_null($data)) {
+                    $response['message'] = $data;
+                }
                 return response()->json($response, 410);
             });
         }
 
+        if (!ResponseFactory::hasMacro('jsonNotFound')) {
         if(!ResponseFactory::hasMacro('jsonNotFound')) {
             ResponseFactory::macro('jsonNotFound', function ($data = null) {
                 $response = ['success' => false];
@@ -125,6 +139,7 @@ class FormRequestServiceProvider extends ServiceProvider
             });
         }
 
+        if (!ResponseFactory::hasMacro('jsonNotValidated')) {
         if(!ResponseFactory::hasMacro('jsonNotValidated')) {
             ResponseFactory::macro('jsonNotValidated', function ($message = null, $errors = null, array $extras = []) {
                 $response = array_merge(['success' => false], $extras);
