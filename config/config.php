@@ -20,6 +20,7 @@ return [
         //     ],
         //     'metadata' => [
         //         'description' => 'Regras padrão para formulários de cadastro de usuário.',
+        //         'description' => 'Default rules for user registration forms.',
         //     ],
         // ],
     ],

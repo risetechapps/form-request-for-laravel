@@ -12,6 +12,11 @@ return new class extends Migration {
     public function up(): void
     {
         // Habilita as extensões do PostgreSQL quando a conexão oferece suporte.
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        // Enable required PostgreSQL extensions when the connection supports them.
         if (DB::getDriverName() === 'pgsql') {
             Schema::createExtensionIfNotExists('citext');
         }
@@ -23,6 +28,10 @@ return new class extends Migration {
             $table->uuid('id')->primary();
 
             // Armazena a chave legível do formulário usando coluna case-insensitive no PostgreSQL.
+            // Primary identifier relies on UUIDs so forms can be shared across services safely.
+            $table->uuid('id')->primary();
+
+            // Store the human readable form key using a case-insensitive column on PostgreSQL.
             if ($usesPostgres) {
                 $table->caseInsensitiveText('form')->nullable();
             } else {
@@ -30,6 +39,7 @@ return new class extends Migration {
             }
 
             // Persiste regras de validação e mensagens utilizando JSON/JSONB conforme o driver.
+            // Persist validation rules and any explicit messages using JSON/JSONB depending on the driver.
             $jsonColumn = $usesPostgres ? 'jsonb' : 'json';
             $table->{$jsonColumn}('rules')->nullable();
             $table->{$jsonColumn}('messages')->nullable();
@@ -38,6 +48,10 @@ return new class extends Migration {
             $table->{$jsonColumn}('data')->nullable();
 
             // Descrição opcional para auxiliar ferramentas administrativas.
+            // Allow integrators to attach arbitrary metadata alongside each dynamic form definition.
+            $table->{$jsonColumn}('data')->nullable();
+
+            // Optional textual description to aid administrative tooling.
             $table->string('description')->nullable();
 
             $table->timestamps();
@@ -47,6 +61,7 @@ return new class extends Migration {
 
     /**
      * Reverte as migrações.
+     * Reverse the migrations.
      */
     public function down(): void
     {

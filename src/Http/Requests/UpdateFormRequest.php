@@ -10,6 +10,8 @@ class UpdateFormRequest extends DynamicFormRequest
     /**
      * Determina se o usuário autenticado pode atualizar a definição do formulário.
      */
+class UpdateFormRequest extends DynamicFormRequest
+{
     public function authorize(): bool
     {
         $route = $this->route();

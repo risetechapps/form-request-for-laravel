@@ -18,6 +18,8 @@ class FormManager
     /**
      * Cria uma nova instância do gerenciador de formulários.
      */
+class FormManager
+{
     public function __construct(
         private readonly FormRequestModel $forms,
         private readonly ValidationRuleRepository $rules,

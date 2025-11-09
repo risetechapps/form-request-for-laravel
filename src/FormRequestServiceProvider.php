@@ -128,6 +128,7 @@ class FormRequestServiceProvider extends ServiceProvider
         }
 
         if (!ResponseFactory::hasMacro('jsonNotFound')) {
+        if(!ResponseFactory::hasMacro('jsonNotFound')) {
             ResponseFactory::macro('jsonNotFound', function ($data = null) {
                 $response = ['success' => false];
                 if (!is_null($data)) {
@@ -139,6 +140,7 @@ class FormRequestServiceProvider extends ServiceProvider
         }
 
         if (!ResponseFactory::hasMacro('jsonNotValidated')) {
+        if(!ResponseFactory::hasMacro('jsonNotValidated')) {
             ResponseFactory::macro('jsonNotValidated', function ($message = null, $errors = null, array $extras = []) {
                 $response = array_merge(['success' => false], $extras);
 

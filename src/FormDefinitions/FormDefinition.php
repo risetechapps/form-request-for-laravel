@@ -15,6 +15,8 @@ final class FormDefinition
      * @param array<string, string> $messages Mensagens de validação opcionais.
      * @param array<string, mixed> $metadata Metadados adicionais armazenados com o formulário.
      */
+final class FormDefinition
+{
     public function __construct(
         private readonly string $name,
         private readonly array $rules,

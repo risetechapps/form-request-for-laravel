@@ -28,6 +28,10 @@ abstract class DynamicFormRequest extends FormRequest
     /**
      * Injeta o repositório de regras preservando a assinatura padrão do construtor de FormRequest.
      */
+    protected array $resolvedRules = [];
+
+    protected array $resolvedMessages = [];
+
     public function __construct(
         protected ValidationRuleRepository $validatorRuleRepository,
         array $query = [],
@@ -51,6 +55,8 @@ abstract class DynamicFormRequest extends FormRequest
      *
      * @return array<string, mixed>
      */
+    abstract protected function formKey(): string;
+
     protected function validationContext(): array
     {
         return [];
