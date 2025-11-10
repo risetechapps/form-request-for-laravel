@@ -9,9 +9,8 @@ return new class extends Migration {
     /**
      * Executa as migrações.
      */
-    public function up(): void
-    {
-        // Habilita as extensões do PostgreSQL quando a conexão oferece suporte.
+    /**
+     * Habilita as extensões do PostgreSQL quando a conexão oferece suporte.
      * Run the migrations.
      */
     public function up(): void
@@ -25,10 +24,6 @@ return new class extends Migration {
 
         Schema::create('form_requests', function (Blueprint $table) use ($usesPostgres) {
             // O identificador primário usa UUID para permitir compartilhamento seguro entre serviços.
-            $table->uuid('id')->primary();
-
-            // Armazena a chave legível do formulário usando coluna case-insensitive no PostgreSQL.
-            // Primary identifier relies on UUIDs so forms can be shared across services safely.
             $table->uuid('id')->primary();
 
             // Store the human readable form key using a case-insensitive column on PostgreSQL.
@@ -47,9 +42,6 @@ return new class extends Migration {
             // Permite anexar metadados arbitrários em cada definição de formulário dinâmico.
             $table->{$jsonColumn}('data')->nullable();
 
-            // Descrição opcional para auxiliar ferramentas administrativas.
-            // Allow integrators to attach arbitrary metadata alongside each dynamic form definition.
-            $table->{$jsonColumn}('data')->nullable();
 
             // Optional textual description to aid administrative tooling.
             $table->string('description')->nullable();
