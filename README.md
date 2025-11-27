@@ -13,8 +13,8 @@ O **Laravel Form Request** é um package para Laravel que gerencia as regras de 
 
 ### 1️⃣ Requisitos
 Antes de instalar, certifique-se de que seu projeto atenda aos seguintes requisitos:
-- PHP >= 8.0
-- Laravel >= 10
+- PHP >= 8.3
+- Laravel >= 12
 - Composer instalado
 
 ### 2️⃣ Instalação do Package
