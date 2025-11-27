@@ -55,7 +55,7 @@ trait HasFormValidation
      */
     protected function validationErrorMessage(): ?string
     {
-        return __('Os dados informados são inválidos.');
+        return __('The data provided is invalid.');
     }
 
     /**
@@ -65,7 +65,7 @@ trait HasFormValidation
      */
     protected function authorizationErrorMessage(): ?string
     {
-        return __('Permissão negada.');
+        return __('Permission denied.');
     }
 
     /**
@@ -103,14 +103,8 @@ trait HasFormValidation
      * @param mixed $errors
      * @param array<string, mixed> $extras
      */
-    protected function jsonNotValidatedResponse(?string $message, $errors, array $extras = []): JsonResponse
+    protected function jsonNotValidatedResponse(?string $message, mixed $errors, array $extras = []): JsonResponse
     {
-        $factory = app(ResponseFactory::class);
-
-        if (ResponseFactory::hasMacro('jsonNotValidated')) {
-            return $factory->jsonNotValidated($message, $errors, $extras);
-        }
-
         $payload = array_merge([
             'success' => false,
             'errors' => $errors,
