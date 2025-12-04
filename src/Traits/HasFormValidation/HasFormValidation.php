@@ -19,7 +19,7 @@ trait HasFormValidation
     protected function failedValidation(Validator $validator)
     {
         $message = $this->validationErrorMessage();
-        $errors = $validator->errors();
+        $errors = $this->translateValidationMessages($validator->errors()->getMessages());
         $extras = $this->validationErrorExtras($validator);
 
         $response = $this->jsonNotValidatedResponse($message, $errors, $extras);
@@ -115,5 +115,22 @@ trait HasFormValidation
         }
 
         return response()->json($payload, 422);
+    }
+
+    /**
+     * Traduz as chaves de erro do validador para mensagens de erro finais.
+     *
+     * @param array<string, array<int, string>> $messages
+     * @return array<string, array<int, string>>
+     */
+    protected function translateValidationMessages(array $messages): array
+    {
+
+        return array_map(function ($errorKeys) {
+            return array_map(function ($errorKey) {
+                return __("{$errorKey}");
+
+            }, $errorKeys);
+        }, $messages);
     }
 }
