@@ -33,7 +33,7 @@ class FormRequestServiceProvider extends ServiceProvider
 
         ]);
 
-        $this->loadTranslationsFrom(__DIR__ . '/../resources/lang', 'formrequest');
+        $this->loadTranslationsFrom(__DIR__ . '/lang');
 
         $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
 
