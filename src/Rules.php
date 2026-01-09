@@ -29,8 +29,6 @@ class Rules
         return [
             'cpf' => Validator\validateCPF::class,
             'cnpj' => Validator\validateCNPJ::class,
-            'cellphone' => Validator\validateCellphone::class,
-            'uniqueAuthenticationCpf' => Validator\validateUniqueAuthenticationCpf::class,
             'uniqueJson' => Validator\validateUniqueJson::class,
             'required_if_any' => Validator\validatorRequiredIfAny::class
         ];
