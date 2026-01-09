@@ -9,23 +9,15 @@ use RiseTechApps\FormRequest\FormDefinitions\FormDefinition;
 use RiseTechApps\FormRequest\FormDefinitions\FormRegistry;
 use RiseTechApps\FormRequest\Models\FormRequest as FormRequestModel;
 
-/**
- * Repositório responsável por resolver regras de validação do banco, da configuração e do cache.
- */
 class ValidationRuleRepository
 {
     private const CACHE_KEY_PREFIX = 'form-request:';
     private const CACHE_KEY_REGISTRY = 'form-request:keys:';
 
     private CacheRepository $cache;
-
     private bool $cacheEnabled;
-
     private int $cacheTtl;
 
-    /**
-     * Configura as dependências do repositório e o comportamento do cache.
-     */
     public function __construct(
         private readonly FormRequestModel $forms,
         CacheFactory $cacheFactory,
@@ -34,104 +26,79 @@ class ValidationRuleRepository
         $cacheConfig = config('rules.cache', []);
         $this->cacheEnabled = (bool) ($cacheConfig['enabled'] ?? false);
         $this->cacheTtl = (int) ($cacheConfig['ttl'] ?? 300);
+
         $store = $cacheConfig['store'] ?? null;
-        $this->cache = $store ? $cacheFactory->store($store) : $cacheFactory->store();
+        $this->cache = $store
+            ? $cacheFactory->store($store)
+            : $cacheFactory->store();
     }
 
     /**
-     * Resolve as regras de validação para o formulário informado e contexto adicional.
-     *
-     * @param array<string, mixed> $parameter Filtros adicionais para escopo da consulta.
-     * @return array{rules: array<string, mixed>, messages: array<string, string>}
+     * Resolve regras de validação considerando banco, config, cache e parâmetros dinâmicos.
      */
     public function getRules(string $name, array $parameter = []): array
     {
+        // parâmetros que NÃO devem influenciar o cache
         $cachedParameters = Arr::except($parameter, ['id']);
-        $validationRules = $this->remember($name, $cachedParameters, function () use ($name, $cachedParameters) {
-            $rulesFromDatabase = $this->fetchRulesFromDatabase($name, $cachedParameters);
 
-            if (!empty($rulesFromDatabase['rules'])) {
-                return $rulesFromDatabase;
+        $validationRules = $this->remember($name, $cachedParameters, function () use ($name, $cachedParameters) {
+            $fromDatabase = $this->fetchRulesFromDatabase($name, $cachedParameters);
+
+            if (!empty($fromDatabase['rules'])) {
+                return $fromDatabase;
             }
 
             return $this->fetchRulesFromConfiguration($name);
         });
 
+        /**
+         * 1️⃣ Ajusta regras `unique:` nativas do Laravel (update)
+         */
         if (array_key_exists('id', $parameter)) {
-            $validationRules['rules'] = $this->setIdUpdate($parameter['id'], $validationRules['rules']);
+            $validationRules['rules'] = $this->setIdUpdate(
+                $parameter['id'],
+                $validationRules['rules']
+            );
+        }
+
+        /**
+         * 2️⃣ Resolve placeholders genéricos (:id, {id}, etc)
+         */
+        if (!empty($parameter)) {
+            $validationRules['rules'] = $this->resolveRuleParameters(
+                $validationRules['rules'],
+                $parameter
+            );
         }
 
         return $validationRules;
     }
 
     /**
-     * Limpa as regras em cache e as chaves registradas para o formulário informado.
+     * Substitui placeholders (:id, {id}) pelos valores reais.
      */
-    public function clearCache(string $name): void
+    private function resolveRuleParameters(array $rules, array $parameters): array
     {
-        if (!$this->cacheEnabled) {
-            return;
-        }
-
-        $registryKey = $this->cacheRegistryKey($name);
-        $keys = $this->cache->pull($registryKey, []);
-
-        foreach ($keys as $key) {
-            $this->cache->forget($key);
-        }
-
-        $this->cache->forget($this->cacheKey($name));
-    }
-
-    /**
-     * Gera mensagens padrão para cada regra de validação.
-     *
-     * @param array<string, mixed> $rules
-     * @return array<string, string>
-     */
-    protected function generateMessages(array $rules): array
-    {
-        $messages = [];
-
-        foreach ($rules as $key => $value) {
-            $messages = array_merge($messages, $this->extractRules($key, $value));
-        }
-
-        return $messages;
-    }
-
-    /**
-     * Normaliza definições de regras em chaves de tradução.
-     *
-     * @param mixed $rulesDefinition
-     * @return array<string, string>
-     */
-    protected function extractRules(string $field, mixed $rulesDefinition): array
-    {
-        $rules = is_array($rulesDefinition) ? $rulesDefinition : explode('|', (string) $rulesDefinition);
-
-        $formattedRules = [];
-
-        foreach ($rules as $rule) {
-            if (!is_string($rule) || $rule === '') {
-                continue;
+        return array_map(function ($rule) use ($parameters) {
+            if (!is_string($rule)) {
+                return $rule;
             }
 
-            $normalizedRule = trim(explode(':', $rule)[0]);
-            $normalizedRule = strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $normalizedRule));
+            foreach ($parameters as $key => $value) {
 
-            $messageKey = $field . '.' . $normalizedRule;
-            $formattedRules[$field . '.' . $normalizedRule] = $messageKey;
-        }
+                $rule = str_replace(
+                    ["{$key}", "{{$key}}"],
+                    (string) $value,
+                    $rule
+                );
+            }
 
-        return $formattedRules;
+            return $rule;
+        }, $rules);
     }
 
     /**
-     * Ajusta regras de unique com o identificador informado durante atualizações.
-     *
-     * @param array<int, mixed> $rules
-     * @return array<int, mixed>
+     * Ajusta regras unique nativas para update.
      */
     private function setIdUpdate(mixed $id, array $rules): array
     {
@@ -148,6 +115,7 @@ class ValidationRuleRepository
                 }
 
                 $segments = explode(',', $part);
+
                 if (isset($segments[2])) {
                     $segments[2] = (string) $id;
                 } else {
@@ -162,10 +130,7 @@ class ValidationRuleRepository
     }
 
     /**
-     * Carrega as regras armazenadas no banco para o formulário informado.
-     *
-     * @param array<string, mixed> $parameter
-     * @return array{rules: array<string, mixed>, messages: array<string, string>}
+     * Busca regras no banco.
      */
     private function fetchRulesFromDatabase(string $name, array $parameter = []): array
     {
@@ -175,11 +140,8 @@ class ValidationRuleRepository
             ->where($where)
             ->first(['rules', 'messages']);
 
-        if (empty($result)) {
-            return [
-                'rules' => [],
-                'messages' => [],
-            ];
+        if (!$result) {
+            return ['rules' => [], 'messages' => []];
         }
 
         $rules = (array) $result->rules;
@@ -189,26 +151,18 @@ class ValidationRuleRepository
             $messages = $this->generateMessages($rules);
         }
 
-        return [
-            'rules' => $rules,
-            'messages' => $messages,
-        ];
+        return compact('rules', 'messages');
     }
 
     /**
-     * Carrega as regras definidas na configuração para o formulário informado.
-     *
-     * @return array{rules: array<string, mixed>, messages: array<string, string>}
+     * Busca regras na configuração.
      */
     private function fetchRulesFromConfiguration(string $name): array
     {
         $definition = $this->registry->get($name);
 
         if (!$definition instanceof FormDefinition) {
-            return [
-                'rules' => [],
-                'messages' => [],
-            ];
+            return ['rules' => [], 'messages' => []];
         }
 
         $rules = $definition->rules();
@@ -218,34 +172,50 @@ class ValidationRuleRepository
             $messages = $this->generateMessages($rules);
         }
 
-        return [
-            'rules' => $rules,
-            'messages' => $messages,
-        ];
+        return compact('rules', 'messages');
     }
 
     /**
-     * Monta a chave de cache para um formulário e conjunto de parâmetros.
-     *
-     * @param array<string, mixed> $parameter
+     * Gera mensagens padrão a partir das regras.
      */
-    private function cacheKey(string $name, array $parameter = []): string
+    protected function generateMessages(array $rules): array
     {
-        if (empty($parameter)) {
-            return sprintf('%s%s', self::CACHE_KEY_PREFIX, $name);
+        $messages = [];
+
+        foreach ($rules as $field => $definition) {
+            $messages += $this->extractRules($field, $definition);
         }
 
-        ksort($parameter);
-
-        return sprintf('%s%s:%s', self::CACHE_KEY_PREFIX, $name, md5(json_encode($parameter)));
+        return $messages;
     }
 
     /**
-     * Armazena o resultado de um callback usando o cache configurado quando habilitado.
-     *
-     * @param array<string, mixed> $parameter
-     * @param callable(): array{rules: array<string, mixed>, messages: array<string, string>} $callback
-     * @return array{rules: array<string, mixed>, messages: array<string, string>}
+     * Normaliza regras para geração de mensagens.
+     */
+    protected function extractRules(string $field, mixed $rulesDefinition): array
+    {
+        $rules = is_array($rulesDefinition)
+            ? $rulesDefinition
+            : explode('|', (string) $rulesDefinition);
+
+        $formatted = [];
+
+        foreach ($rules as $rule) {
+            if (!is_string($rule) || $rule === '') {
+                continue;
+            }
+
+            $name = trim(explode(':', $rule)[0]);
+            $name = strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $name));
+
+            $formatted["{$field}.{$name}"] = "{$field}.{$name}";
+        }
+
+        return $formatted;
+    }
+
+    /**
+     * Cache helpers
      */
     private function remember(string $name, array $parameter, callable $callback): array
     {
@@ -258,30 +228,34 @@ class ValidationRuleRepository
         return $this->cache->remember($key, $this->cacheTtl, function () use ($callback, $name, $key) {
             $value = $callback();
             $this->storeCacheKey($name, $key);
-
             return $value;
         });
     }
 
-    /**
-     * Registra as chaves de cache usadas para um formulário permitindo invalidação direcionada.
-     */
+    private function cacheKey(string $name, array $parameter = []): string
+    {
+        if (empty($parameter)) {
+            return self::CACHE_KEY_PREFIX . $name;
+        }
+
+        ksort($parameter);
+
+        return sprintf(
+            '%s%s:%s',
+            self::CACHE_KEY_PREFIX,
+            $name,
+            md5(json_encode($parameter))
+        );
+    }
+
     private function storeCacheKey(string $name, string $cacheKey): void
     {
-        $registryKey = $this->cacheRegistryKey($name);
+        $registryKey = self::CACHE_KEY_REGISTRY . $name;
         $keys = $this->cache->get($registryKey, []);
 
         if (!in_array($cacheKey, $keys, true)) {
             $keys[] = $cacheKey;
             $this->cache->put($registryKey, $keys, $this->cacheTtl);
         }
-    }
-
-    /**
-     * Monta a chave de registro utilizada para armazenar as referências de cache.
-     */
-    private function cacheRegistryKey(string $name): string
-    {
-        return self::CACHE_KEY_REGISTRY . $name;
     }
 }
