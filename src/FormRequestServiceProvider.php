@@ -37,7 +37,9 @@ class FormRequestServiceProvider extends ServiceProvider
 
         $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
 
-        $this->registerRules();
+        $this->app->booted(function () {
+            $this->registerRules();
+        });
     }
 
     /**
