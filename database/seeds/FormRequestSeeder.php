@@ -4,13 +4,15 @@ namespace RiseTechApps\FormRequest\Database\Seeds;
 
 use Illuminate\Database\Seeder;
 use RiseTechApps\FormRequest\Models\FormRequest;
-use RiseTechApps\FormRequest\Rules;
+use RiseTechApps\FormRequest\RulesRegistry;
 
 class FormRequestSeeder extends Seeder
 {
     public function run(): void
     {
-        foreach (Rules::defaultRules() as $key => $value) {
+        $rules = app(RulesRegistry::class);
+
+        foreach ($rules->allRules() as $key => $value) {
 
             if(!FormRequest::where('form' , $key)->exists()){
 
