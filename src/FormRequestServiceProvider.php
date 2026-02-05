@@ -2,7 +2,6 @@
 
 namespace RiseTechApps\FormRequest;
 
-use Illuminate\Routing\ResponseFactory;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\ServiceProvider;
 use RiseTechApps\FormRequest\Commands\MigrateCommand;
@@ -19,7 +18,7 @@ class FormRequestServiceProvider extends ServiceProvider
     /**
      * Inicializa os serviços da aplicação.
      */
-    public function boot(): void
+    public function boot(RulesRegistry $registry): void
     {
         if ($this->app->runningInConsole()) {
             $this->publishes([
@@ -37,8 +36,8 @@ class FormRequestServiceProvider extends ServiceProvider
 
         $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
 
-        $this->app->booted(function () {
-            $this->registerRules();
+        $this->app->booted(function () use ($registry) {
+            $this->registerRules($registry);
         });
     }
 
@@ -58,31 +57,28 @@ class FormRequestServiceProvider extends ServiceProvider
         });
 
         $this->app->singleton(FormRegistry::class, function () {
-            return new FormRegistry(Rules::defaultRules());
+            return new FormRegistry(
+                app(RulesRegistry::class)->allRules(),
+            );
         });
 
         $this->app->singleton(ValidationRuleRepository::class);
         $this->app->singleton(FormManager::class);
+
+        $this->app->singleton(\RiseTechApps\FormRequest\RulesRegistry::class, function ($app) {
+            return new \RiseTechApps\FormRequest\RulesRegistry();
+        });
     }
 
     /**
      * Registra regras de validação personalizadas definidas pelo pacote e pela configuração.
      */
-    private function registerRules(): void
+    private function registerRules(RulesRegistry $registry): void
     {
-        $validatorConfig = config('rules.validators') ?? [];
-        $validatorDefault = Rules::defaultValidators();
 
-        foreach ($validatorConfig as $rule => $className) {
+        $validator = app(RulesRegistry::class)->allValidators();
 
-            if (new $className() instanceof ValidatorContract) {
-                Validator::extend($rule, function ($attribute, $value, $parameters, $validator) use ($className) {
-                    return $className::validate($attribute, $value, $parameters, $validator);
-                });
-            }
-        }
-
-        foreach ($validatorDefault as $rule => $className) {
+        foreach ($validator as $rule => $className) {
 
             if (new $className() instanceof ValidatorContract) {
                 Validator::extend($rule, function ($attribute, $value, $parameters, $validator) use ($className) {
