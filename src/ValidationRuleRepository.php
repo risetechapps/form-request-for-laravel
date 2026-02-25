@@ -86,6 +86,10 @@ class ValidationRuleRepository
 
             foreach ($parameters as $key => $value) {
 
+                if (str_contains($rule, 'exists:') && $key === 'id') {
+                    continue;
+                }
+
                 $rule = str_replace(
                     ["{$key}", "{{$key}}"],
                     (string) $value,
