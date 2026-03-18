@@ -22,7 +22,7 @@ return new class extends Migration {
 
         $usesPostgres = DB::getDriverName() === 'pgsql';
 
-        Schema::create('form_requests', function (Blueprint $table) use ($usesPostgres) {
+        Schema::create('form_requests', function ($table) use ($usesPostgres) {
             // O identificador primário usa UUID para permitir compartilhamento seguro entre serviços.
             $table->uuid('id')->primary();
 
