@@ -39,6 +39,22 @@ class RulesRegistry
         );
     }
 
+    /**
+     * Retorna todas as mensagens dos contratos registrados.
+     *
+     * @return array<string, array<string, string>>
+     */
+    public function allMessages(): array
+    {
+        $all = [];
+
+        foreach ($this->registeredClasses as $class) {
+            $all = array_merge($all, $class::Messages());
+        }
+
+        return $all;
+    }
+
     public function allValidators(): array
     {
         $all = [];
