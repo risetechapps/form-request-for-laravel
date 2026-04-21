@@ -4,5 +4,8 @@ namespace RiseTechApps\FormRequest\Contracts;
 
 interface ValidatorContract
 {
-    public static function validate($attribute, $value, $parameters, $validator);
+    /**
+     * @param array<int, mixed> $parameters
+     */
+    public static function validate(string $attribute, mixed $value, array $parameters, \Illuminate\Validation\Validator $validator): bool;
 }
