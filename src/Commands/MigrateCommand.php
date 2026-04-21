@@ -37,7 +37,7 @@ class MigrateCommand extends CommandMigrate
             return parent::getMigrationPaths();
         }
 
-        return database_path('migrations');
+        return __DIR__ . '/../../database/migrations';
     }
 
     public function handle(): void
