@@ -13,7 +13,7 @@ class SeedCommand extends Command
     public function handle(): void
     {
         $this->call('db:seed', [
-            '--class' => 'RiseTechApps\\FormRequest\\Database\\Seeds\\FormRequestSeeder',
+            '--class' => 'RiseTechApps\\FormRequest\\Database\\seeds\\FormRequestSeeder',
 
         ]);
 
