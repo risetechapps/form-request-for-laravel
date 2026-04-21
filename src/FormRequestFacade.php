@@ -5,7 +5,7 @@ namespace RiseTechApps\FormRequest;
 use Illuminate\Support\Facades\Facade;
 
 /**
- * @see \RiseTechApps\FormRequest\Skeleton\SkeletonClass
+ * @see \RiseTechApps\FormRequest\FormRequest
  */
 class FormRequestFacade extends Facade
 {
