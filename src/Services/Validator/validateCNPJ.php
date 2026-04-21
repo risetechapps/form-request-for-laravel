@@ -7,16 +7,18 @@ use RiseTechApps\FormRequest\Contracts\ValidatorContract;
 class validateCNPJ implements ValidatorContract
 {
 
-    public static function validate($attribute, $value, $parameters, $validator)
+    public static function validate(string $attribute, mixed $value, array $parameters, \Illuminate\Validation\Validator $validator): bool
     {
         try {
             $cnpj = preg_replace('/[^0-9]/', '', (string)$value);
 
-            if (strlen($cnpj) != 14)
+            if (strlen($cnpj) != 14) {
                 return false;
+            }
 
-            if (preg_match('/(\d)\1{13}/', $cnpj))
+            if (preg_match('/(\d)\1{13}/', $cnpj)) {
                 return false;
+            }
 
             for ($i = 0, $j = 5, $soma = 0; $i < 12; $i++) {
                 $soma += $cnpj[$i] * $j;

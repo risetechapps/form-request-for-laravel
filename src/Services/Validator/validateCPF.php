@@ -7,7 +7,7 @@ use RiseTechApps\FormRequest\Contracts\ValidatorContract;
 
 class validateCPF implements ValidatorContract
 {
-    public static function validate($attribute, $value, $parameters, $validator): bool
+    public static function validate(string $attribute, mixed $value, array $parameters, \Illuminate\Validation\Validator $validator): bool
     {
         try{
             $cpf = preg_replace('/[^0-9]/', '', $value);
