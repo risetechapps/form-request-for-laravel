@@ -4,8 +4,15 @@ namespace RiseTechApps\FormRequest;
 
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\ServiceProvider;
+use RiseTechApps\FormRequest\Commands\ClearCacheCommand;
+use RiseTechApps\FormRequest\Commands\ExportRulesCommand;
+use RiseTechApps\FormRequest\Commands\ImportRulesCommand;
+use RiseTechApps\FormRequest\Commands\ListRulesCommand;
 use RiseTechApps\FormRequest\Commands\MigrateCommand;
 use RiseTechApps\FormRequest\Commands\SeedCommand;
+use RiseTechApps\FormRequest\Commands\StatsCommand;
+use RiseTechApps\FormRequest\Commands\ValidateRulesCommand;
+use RiseTechApps\FormRequest\Commands\WarmCacheCommand;
 use RiseTechApps\FormRequest\Contracts\ValidatorContract;
 use RiseTechApps\FormRequest\FormDefinitions\FormRegistry;
 use RiseTechApps\FormRequest\Services\FormManager;
@@ -27,9 +34,15 @@ class FormRequestServiceProvider extends ServiceProvider
         }
 
         $this->commands([
+            ClearCacheCommand::class,
+            ExportRulesCommand::class,
+            ImportRulesCommand::class,
+            ListRulesCommand::class,
             MigrateCommand::class,
             SeedCommand::class,
-
+            StatsCommand::class,
+            ValidateRulesCommand::class,
+            WarmCacheCommand::class,
         ]);
 
         $this->loadTranslationsFrom(__DIR__ . '/lang');
@@ -38,7 +51,23 @@ class FormRequestServiceProvider extends ServiceProvider
 
         $this->app->booted(function () use ($registry) {
             $this->registerRules($registry);
+            $this->registerFormRegistry($registry);
         });
+    }
+
+    /**
+     * Registra o FormRegistry após as classes de regras serem registradas.
+     */
+    private function registerFormRegistry(RulesRegistry $registry): void
+    {
+        // Cria o FormRegistry com os dados atuais do RulesRegistry
+        $formRegistry = new FormRegistry(
+            $registry->allRules(),
+            $registry->allMessages()
+        );
+
+        // Registra o singleton com a instância já criada
+        $this->app->instance(FormRegistry::class, $formRegistry);
     }
 
     /**
@@ -56,12 +85,7 @@ class FormRequestServiceProvider extends ServiceProvider
             return new FormRequest;
         });
 
-        $this->app->singleton(FormRegistry::class, function () {
-            return new FormRegistry(
-                app(RulesRegistry::class)->allRules(),
-            );
-        });
-
+        // FormRegistry será registrado no boot após as regras serem carregadas
         $this->app->singleton(ValidationRuleRepository::class);
         $this->app->singleton(FormManager::class);
 
