@@ -8,9 +8,13 @@ use Illuminate\Support\Facades\Validator;
 class validatorRequiredIfAny implements ValidatorContract
 {
 
-    public static function validate($attribute, $value, $parameters, $validator)
+    public static function validate(string $attribute, mixed $value, array $parameters, \Illuminate\Validation\Validator $validator): bool
     {
         try {
+            if (count($parameters) < 2) {
+                throw new \InvalidArgumentException('The required_if_any rule requires at least 2 parameters.');
+            }
+
             $data = $validator->getData();
 
             $first  = data_get($data, $parameters[0]);
