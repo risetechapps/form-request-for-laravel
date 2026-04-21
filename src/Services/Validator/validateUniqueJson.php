@@ -8,9 +8,12 @@ use RiseTechApps\FormRequest\Contracts\ValidatorContract;
 class validateUniqueJson implements ValidatorContract
 {
 
-    public static function validate($attribute, $value, $parameters, $validator): bool
+    public static function validate(string $attribute, mixed $value, array $parameters, \Illuminate\Validation\Validator $validator): bool
     {
         try {
+            if (count($parameters) < 2) {
+                throw new \InvalidArgumentException('The uniqueJson rule requires at least 2 parameters: table and jsonPath.');
+            }
 
             $table = $parameters[0];
 
