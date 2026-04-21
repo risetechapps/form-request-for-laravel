@@ -19,9 +19,9 @@ class FormRegistry
      *
      * @param array<string, array<string, mixed>|array<int, mixed>> $definitions
      */
-    public function __construct(array $definitions = [])
+    public function __construct(array $definitions = [], array $messages = [])
     {
-        $this->registerMany($definitions);
+        $this->registerMany($definitions, $messages);
     }
 
     /**
@@ -41,10 +41,13 @@ class FormRegistry
      * Registra várias definições de formulário de uma só vez.
      *
      * @param array<string, mixed> $definitions
+     * @param array<string, array<string, string> $messages
      */
-    public function registerMany(array $definitions): void
+    public function registerMany(array $definitions, array $messages = []): void
     {
         foreach ($definitions as $name => $definition) {
+            $formName = (string) $name;
+
             if (
                 is_array($definition)
                 && Arr::isAssoc($definition)
@@ -52,15 +55,20 @@ class FormRegistry
                 && is_array($definition['rules'])
             ) {
                 $rules = $definition['rules'];
-                $messages = (array) ($definition['messages'] ?? []);
+                $formMessages = (array) ($definition['messages'] ?? []);
                 $metadata = (array) ($definition['metadata'] ?? []);
             } else {
                 $rules = (array) $definition;
-                $messages = [];
+                $formMessages = [];
                 $metadata = [];
             }
 
-            $this->register((string) $name, $rules, $messages, $metadata);
+            // Mescla mensagens do parâmetro $messages se existirem para este formulário
+            if (isset($messages[$formName]) && is_array($messages[$formName])) {
+                $formMessages = array_merge($formMessages, $messages[$formName]);
+            }
+
+            $this->register($formName, $rules, $formMessages, $metadata);
         }
     }
 
