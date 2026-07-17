@@ -47,7 +47,6 @@ class ClearCacheCommand extends Command
         try {
             $reflection = new \ReflectionClass($repository);
             $property = $reflection->getProperty('cache');
-            $property->setAccessible(true);
             $cache = $property->getValue($repository);
 
             $prefix = 'form-request:';

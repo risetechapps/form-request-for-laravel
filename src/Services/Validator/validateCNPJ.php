@@ -12,11 +12,11 @@ class validateCNPJ implements ValidatorContract
         try {
             $cnpj = preg_replace('/[^0-9]/', '', (string)$value);
 
-            if (strlen($cnpj) != 14) {
+            if (strlen((string) $cnpj) != 14) {
                 return false;
             }
 
-            if (preg_match('/(\d)\1{13}/', $cnpj)) {
+            if (preg_match('/(\d)\1{13}/', (string) $cnpj)) {
                 return false;
             }
 

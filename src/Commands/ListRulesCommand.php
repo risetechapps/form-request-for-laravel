@@ -103,9 +103,7 @@ class ListRulesCommand extends Command
     {
         // Filtra regras por campo se especificado
         if ($filterField) {
-            $rules = array_filter($rules, function ($field) use ($filterField) {
-                return $field === $filterField || str_contains($field, $filterField);
-            }, ARRAY_FILTER_USE_KEY);
+            $rules = array_filter($rules, fn($field) => $field === $filterField || str_contains((string) $field, $filterField), ARRAY_FILTER_USE_KEY);
 
             if (empty($rules)) {
                 return; // Pula formulários que não têm o campo
@@ -131,12 +129,12 @@ class ListRulesCommand extends Command
             $rows = [];
 
             foreach ($rules as $field => $rule) {
-                $ruleArray = is_array($rule) ? $rule : explode('|', $rule);
+                $ruleArray = is_array($rule) ? $rule : explode('|', (string) $rule);
                 $fieldName = $field; // Guarda o nome do campo
                 $isFirstRule = true;
 
                 foreach ($ruleArray as $individualRule) {
-                    $individualRule = trim($individualRule);
+                    $individualRule = trim((string) $individualRule);
                     if (empty($individualRule)) continue;
 
                     $ruleName = $this->extractRuleName($individualRule);
@@ -173,7 +171,7 @@ class ListRulesCommand extends Command
         $name = $parts[0];
 
         // Converte camelCase para snake_case
-        return strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $name));
+        return strtolower((string) preg_replace('/(?<!^)[A-Z]/', '_$0', $name));
     }
 
     /**
@@ -188,10 +186,10 @@ class ListRulesCommand extends Command
         $messages = $existingMessages;
 
         foreach ($rules as $field => $rule) {
-            $ruleArray = is_array($rule) ? $rule : explode('|', $rule);
+            $ruleArray = is_array($rule) ? $rule : explode('|', (string) $rule);
 
             foreach ($ruleArray as $individualRule) {
-                $individualRule = trim($individualRule);
+                $individualRule = trim((string) $individualRule);
                 if (empty($individualRule) || !is_string($individualRule)) {
                     continue;
                 }

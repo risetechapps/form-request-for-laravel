@@ -5,7 +5,7 @@ namespace RiseTechApps\FormRequest\FormDefinitions;
 /**
  * Objeto de valor imutável que representa uma definição de formulário dinâmico.
  */
-final class FormDefinition
+final readonly class FormDefinition
 {
     /**
      * Cria uma nova instância de definição de formulário.
@@ -17,11 +17,12 @@ final class FormDefinition
      */
 
     public function __construct(
-        private readonly string $name,
-        private readonly array $rules,
-        private readonly array $messages = [],
-        private readonly array $metadata = []
-    ) {
+        private string $name,
+        private array  $rules,
+        private array  $messages = [],
+        private array  $metadata = []
+    )
+    {
     }
 
     /**

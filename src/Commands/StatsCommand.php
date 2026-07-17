@@ -61,7 +61,7 @@ class StatsCommand extends Command
         try {
             $cacheKeys = $this->getCacheKeys();
             $this->line("  • Chaves em cache: " . count($cacheKeys));
-        } catch (\Exception $e) {
+        } catch (\Exception) {
             $this->line("  • Chaves em cache: Não foi possível determinar");
         }
 
@@ -127,9 +127,9 @@ class StatsCommand extends Command
             // Alguns drivers suportam getAllKeys ou similar
             if (method_exists($store->getStore(), 'getAllKeys')) {
                 $allKeys = $store->getStore()->getAllKeys();
-                $keys = array_filter($allKeys, fn($k) => str_starts_with($k, 'form-request:'));
+                $keys = array_filter($allKeys, fn($k) => str_starts_with((string) $k, 'form-request:'));
             }
-        } catch (\Exception $e) {
+        } catch (\Exception) {
             // Silenciar erro - nem todos os drivers suportam listagem
         }
 

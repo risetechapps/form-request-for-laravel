@@ -16,7 +16,7 @@ trait HasFormValidation
      * @param Validator $validator
      * @return never
      */
-    protected function failedValidation(Validator $validator)
+    protected function failedValidation(Validator $validator): never
     {
         $message = $this->validationErrorMessage();
         $errors = $this->translateValidationMessages($validator->errors()->getMessages());
@@ -125,12 +125,6 @@ trait HasFormValidation
      */
     protected function translateValidationMessages(array $messages): array
     {
-
-        return array_map(function ($errorKeys) {
-            return array_map(function ($errorKey) {
-                return __("{$errorKey}");
-
-            }, $errorKeys);
-        }, $messages);
+        return array_map(fn($errorKeys) => array_map(fn($errorKey) => __("{$errorKey}"), $errorKeys), $messages);
     }
 }

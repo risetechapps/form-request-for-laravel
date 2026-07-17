@@ -13,6 +13,7 @@ class FormRequestResource extends JsonResource
     /**
      * Transforma o resource em um array.
      */
+    #[\Override]
     public function toArray(Request $request): array
     {
         return [

@@ -16,11 +16,13 @@ class MigrateCommand extends CommandMigrate
         $this->specifyParameters();
     }
 
+    #[\Override]
     public function getName(): ?string
     {
         return static::getCommandName();
     }
 
+    #[\Override]
     public static function getDefaultName(): ?string
     {
         return static::getCommandName();
@@ -31,6 +33,7 @@ class MigrateCommand extends CommandMigrate
         return 'form-request:migrate';
     }
 
+    #[\Override]
     protected function getMigrationPaths(): array|string
     {
         if ($this->input->hasOption('path') && $this->input->getOption('path')) {
@@ -40,6 +43,7 @@ class MigrateCommand extends CommandMigrate
         return __DIR__ . '/../../database/migrations';
     }
 
+    #[\Override]
     public function handle(): void
     {
         parent::handle();

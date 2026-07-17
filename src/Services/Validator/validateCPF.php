@@ -10,9 +10,9 @@ class validateCPF implements ValidatorContract
     public static function validate(string $attribute, mixed $value, array $parameters, \Illuminate\Validation\Validator $validator): bool
     {
         try{
-            $cpf = preg_replace('/[^0-9]/', '', $value);
+            $cpf = preg_replace('/[^0-9]/', '', (string) $value);
 
-            if ((strlen($cpf) != 11) || preg_match('/(\d)\1{10}/', $cpf)) {
+            if ((strlen((string) $cpf) != 11) || preg_match('/(\d)\1{10}/', (string) $cpf)) {
                 return false;
             }
 

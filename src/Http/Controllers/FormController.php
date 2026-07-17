@@ -31,7 +31,7 @@ class FormController extends Controller
     public function index(Request $request): JsonResponse
     {
         try {
-            $perPage = (int) $request->query('per_page', 15);
+            $perPage = (int)$request->query('per_page', 15);
             $filters = array_filter([
                 'form' => $request->query('form'),
             ]);
@@ -42,14 +42,12 @@ class FormController extends Controller
 
             if ($request->boolean('include_configured')) {
                 $configured = collect($this->forms->configured())
-                    ->map(function (FormDefinition $definition) {
-                        return [
-                            'form' => $definition->name(),
-                            'rules' => $definition->rules(),
-                            'messages' => $definition->messages(),
-                            'metadata' => $definition->metadata(),
-                        ];
-                    })
+                    ->map(fn(FormDefinition $definition) => [
+                        'form' => $definition->name(),
+                        'rules' => $definition->rules(),
+                        'messages' => $definition->messages(),
+                        'metadata' => $definition->metadata(),
+                    ])
                     ->values();
 
                 $data->additional(['configured' => $configured]);
@@ -92,7 +90,7 @@ class FormController extends Controller
     public function show(Request $request): JsonResponse
     {
         try {
-            $form = $this->forms->findOrFail((string) $request->route('id'));
+            $form = $this->forms->findOrFail((string)$request->route('id'));
             $data = FormRequestResource::make($form);
 
             logglyInfo()->withRequest($request)->performedOn($form)->log("Success when loading the record for viewing");
@@ -117,7 +115,7 @@ class FormController extends Controller
     {
 
         try {
-            $form = $this->forms->findOrFail((string) $request->route('id'));
+            $form = $this->forms->findOrFail((string)$request->route('id'));
             $form = $this->forms->update($form, $request->validationData());
 
             logglyInfo()->withRequest($request)->performedOn($form)->log("Success by updating the registration");
@@ -142,7 +140,7 @@ class FormController extends Controller
     public function destroy(Request $request): JsonResponse
     {
         try {
-            $form = $this->forms->findOrFail((string) $request->route('id'));
+            $form = $this->forms->findOrFail((string)$request->route('id'));
 
             $this->forms->delete($form);
 

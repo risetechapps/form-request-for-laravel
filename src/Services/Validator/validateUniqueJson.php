@@ -22,11 +22,11 @@ class validateUniqueJson implements ValidatorContract
             $jsonPath = $secondItem;
             $valueId = null;
 
-            if (str_contains($secondItem, ':')) {
-                [$jsonPath, $valueId] = explode(':', $secondItem, 2);
+            if (str_contains((string) $secondItem, ':')) {
+                [$jsonPath, $valueId] = explode(':', (string) $secondItem, 2);
             }
 
-            [$jsonField, $jsonKey] = explode('.', $jsonPath);
+            [$jsonField, $jsonKey] = explode('.', (string) $jsonPath);
 
             return DB::table($table)
                     ->where("{$jsonField}->{$jsonKey}", $value)

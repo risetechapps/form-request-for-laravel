@@ -73,25 +73,20 @@ class FormRequestServiceProvider extends ServiceProvider
     /**
      * Registra os serviços da aplicação.
      */
+    #[\Override]
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__ . '/../config/config.php', 'rules');
 
-        $this->app->singleton(Commands\MigrateCommand::class, function ($app) {
-            return new Commands\MigrateCommand($app['migrator'], $app['events']);
-        });
+        $this->app->singleton(Commands\MigrateCommand::class, fn($app) => new Commands\MigrateCommand($app['migrator'], $app['events']));
 
-        $this->app->singleton(FormRequest::class, function () {
-            return new FormRequest;
-        });
+        $this->app->singleton(FormRequest::class, fn() => new FormRequest);
 
         // FormRegistry será registrado no boot após as regras serem carregadas
         $this->app->singleton(ValidationRuleRepository::class);
         $this->app->singleton(FormManager::class);
 
-        $this->app->singleton(\RiseTechApps\FormRequest\RulesRegistry::class, function ($app) {
-            return new \RiseTechApps\FormRequest\RulesRegistry();
-        });
+        $this->app->singleton(\RiseTechApps\FormRequest\RulesRegistry::class, fn($app) => new \RiseTechApps\FormRequest\RulesRegistry());
     }
 
     /**
@@ -105,9 +100,7 @@ class FormRequestServiceProvider extends ServiceProvider
         foreach ($validator as $rule => $className) {
 
             if (new $className() instanceof ValidatorContract) {
-                Validator::extend($rule, function ($attribute, $value, $parameters, $validator) use ($className) {
-                    return $className::validate($attribute, $value, $parameters, $validator);
-                });
+                Validator::extend($rule, fn($attribute, $value, $parameters, $validator) => $className::validate($attribute, $value, $parameters, $validator));
             }
         }
     }

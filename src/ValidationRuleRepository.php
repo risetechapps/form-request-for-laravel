@@ -11,12 +11,12 @@ use RiseTechApps\FormRequest\Models\FormRequest as FormRequestModel;
 
 class ValidationRuleRepository
 {
-    private const CACHE_KEY_PREFIX = 'form-request:';
-    private const CACHE_KEY_REGISTRY = 'form-request:keys:';
+    private const string CACHE_KEY_PREFIX = 'form-request:';
+    private const string CACHE_KEY_REGISTRY = 'form-request:keys:';
 
-    private CacheRepository $cache;
-    private bool $cacheEnabled;
-    private int $cacheTtl;
+    private readonly CacheRepository $cache;
+    private readonly bool $cacheEnabled;
+    private readonly int $cacheTtl;
 
     public function __construct(
         private readonly FormRequestModel $forms,
@@ -111,7 +111,7 @@ class ValidationRuleRepository
                 return $rule;
             }
 
-            $parts = array_map('trim', explode('|', $rule));
+            $parts = array_map(trim(...), explode('|', $rule));
 
             foreach ($parts as &$part) {
                 if (!str_starts_with($part, 'unique:')) {
@@ -210,7 +210,7 @@ class ValidationRuleRepository
             }
 
             $name = trim(explode(':', $rule)[0]);
-            $name = strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $name));
+            $name = strtolower((string) preg_replace('/(?<!^)[A-Z]/', '_$0', $name));
 
             $formatted["{$field}.{$name}"] = "{$field}.{$name}";
         }
