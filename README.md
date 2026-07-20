@@ -6,7 +6,8 @@ O **Laravel Form Request** é um package para Laravel que gerencia as regras de 
 ## ✨ Funcionalidades
 - 📋 **Forms dinâmicos** - Regras de validação configuráveis em banco de dados
 - 📁 **Forms via código** - Regras definidas em classes PHP
-- 🔐 **Validadores customizados** - CPF, CNPJ, uniqueJson, required_if_any
+- 🔐 **Validadores customizados** - Documentos brasileiros, boletos, Pix, cartão e senha forte
+- 🏢 **Escopos de presença** - Condições extras nas regras `unique` e `exists` sem alterar a regra
 - ⚡ **Cache** - Cache automático das regras para melhor performance
 - 🔄 **Export/Import** - Migração de regras entre ambientes
 - 📊 **Estatísticas** - Monitoramento e análise de uso
@@ -238,6 +239,20 @@ public function boot(RulesRegistry $rulesRegistry): void
 - Suporte a múltiplos formulários em uma única classe
 - Organização por módulo
 
+#### Opção 3: Usando a facade
+
+O alias `FormRequest` é registrado automaticamente pelo package discovery e expõe os
+mesmos métodos:
+
+```php
+use FormRequest;
+
+FormRequest::register('clients', ['name' => 'required|string|max:255']);
+```
+
+> Atenção: o alias global tem o mesmo nome curto de `Illuminate\Foundation\Http\FormRequest`.
+> Em arquivos que estendem o FormRequest do Laravel, mantenha o `use` explícito.
+
 ### API RESTful
 
 O pacote expõe endpoints para gerenciar formulários via API:
@@ -265,12 +280,160 @@ Endpoints disponíveis:
 
 O pacote inclui validadores extras:
 
+### Documentos
+
 | Regra | Descrição | Exemplo |
 |-------|-----------|---------|
 | `cpf` | Valida CPF brasileiro | `'cpf' => 'required\|cpf'` |
-| `cnpj` | Valida CNPJ brasileiro | `'cnpj' => 'required\|cnpj'` |
+| `cnpj` | Valida CNPJ, numérico ou alfanumérico | `'cnpj' => 'required\|cnpj'` |
+| `cnae` | Estrutura do código CNAE 2.x (7 dígitos) | `'cnae' => 'required\|cnae'` |
+| `ncm` | Estrutura do código NCM/SH (8 dígitos) | `'ncm' => 'required\|ncm'` |
+
+> O `cnpj` segue a Nota Técnica COTEC nº 49/2024: as 12 primeiras posições aceitam letras
+> e números, e os 2 dígitos verificadores usam o valor ASCII do caractere menos 48.
+> CNPJs numéricos antigos continuam válidos sem alteração.
+
+> `cnae` e `ncm` **não possuem dígito verificador**. A validação é estrutural
+> (tamanho, divisão/capítulo válidos) e não garante que o código exista nas tabelas oficiais.
+
+### Financeiro
+
+| Regra | Descrição | Exemplo |
+|-------|-----------|---------|
+| `credit_card` | Número de cartão pelo algoritmo de Luhn | `'card' => 'required\|credit_card'` |
+| `credit_card:bandeiras` | Restringe as bandeiras aceitas | `'card' => 'required\|credit_card:visa,mastercard'` |
+| `pix_key` | Chave Pix em qualquer formato do Banco Central | `'key' => 'required\|pix_key'` |
+| `pix_key:tipos` | Restringe os tipos aceitos | `'key' => 'required\|pix_key:email,phone'` |
+| `bank_barcode` | Código de barras bancário de 44 posições | `'code' => 'required\|bank_barcode'` |
+| `digitable_line` | Linha digitável de 47 ou 48 posições | `'line' => 'required\|digitable_line'` |
+| `bank_slip` | Alias de `digitable_line` | `'boleto' => 'required\|bank_slip'` |
+
+Bandeiras aceitas em `credit_card`: `visa`, `mastercard`, `amex`, `elo`, `hipercard`,
+`diners`, `discover`, `jcb`.
+
+Tipos aceitos em `pix_key`: `cpf`, `cnpj`, `email`, `phone`, `random`.
+Chaves de CPF/CNPJ trafegam apenas com dígitos e telefone segue E.164 (`+5511999998888`),
+como definido pela DICT.
+
+`bank_barcode` e `digitable_line` cobrem tanto títulos bancários quanto contas de
+arrecadação (iniciadas em 8). Na linha digitável, além do DV de cada campo, o código de
+barras é remontado e revalidado.
+
+### Outros
+
+| Regra | Descrição | Exemplo |
+|-------|-----------|---------|
+| `strong_password` | Força da senha, parametrizável | `'password' => 'required\|strong_password'` |
 | `uniqueJson` | Valida unicidade em coluna JSON | `'email' => 'uniqueJson:users,preferences.email'` |
+| `existsJson` | Exige que o valor exista em coluna JSON | `'email' => 'existsJson:users,preferences.email'` |
 | `required_if_any` | Requerido se qualquer campo for preenchido | `'field' => 'required_if_any:field_a,field_b'` |
+
+O `strong_password` exige, por padrão, 8 caracteres com maiúscula, minúscula, número e
+símbolo. Os parâmetros ajustam esse conjunto — um número define o comprimento mínimo e os
+demais valores (`upper`, `lower`, `number`, `symbol`) substituem a lista de exigências:
+
+```php
+'password' => 'required|strong_password',              // padrão
+'password' => 'required|strong_password:12',           // apenas aumenta o mínimo
+'password' => 'required|strong_password:10,upper,number',
+```
+
+Letras acentuadas contam como letra, e não como símbolo.
+
+### Registrando validadores próprios
+
+Em `config/rules.php`, no formato `'regra' => Classe::class`. A classe precisa implementar
+`RiseTechApps\FormRequest\Contracts\ValidatorContract`. Chaves declaradas aqui
+sobrescrevem os validadores nativos:
+
+```php
+'validators' => [
+    'my_document' => \App\Validators\MyDocument::class,
+],
+```
+
+---
+
+## 🏢 Escopos de `unique` e `exists`
+
+Regras como `unique:authentications,email` geram sempre a mesma consulta:
+
+```sql
+select count(*) as aggregate from "authentications" where "email" = ?
+```
+
+Em cenários multi-tenant é preciso restringir essa consulta ao tenant atual, o que
+normalmente exigiria criar uma regra personalizada para cada tabela. Os escopos de
+presença injetam condições extras em **todas** as regras `unique` e `exists`, sem
+alterar nenhuma string de regra:
+
+```php
+use RiseTechApps\FormRequest\FormRequest;
+
+// Em AppServiceProvider::boot()
+FormRequest::presenceScope('authentications', fn($query) => $query->where('tenant_id', tenant()->id));
+
+// Aplicado a todas as tabelas
+FormRequest::presenceScopeAll(fn($query) => $query->whereNull('deleted_at'));
+```
+
+A regra continua `unique:authentications,email`, mas a consulta passa a ser:
+
+```sql
+select count(*) as aggregate from "authentications"
+where "tenant_id" = ? and "deleted_at" is null and "email" = ?
+```
+
+As closures são avaliadas **no momento da consulta**, então leem sempre o tenant
+resolvido naquele request ou job.
+
+### Escopos nomeados
+
+Informar um nome permite substituir ou remover o escopo depois — útil quando o registro
+acontece em um middleware por request:
+
+```php
+use RiseTechApps\FormRequest\Validation\PresenceScopeRegistry;
+
+FormRequest::presenceScope('authentications', $scope, 'tenant');
+
+app(PresenceScopeRegistry::class)->forget('authentications', 'tenant');
+```
+
+### Ignorando os escopos
+
+```php
+FormRequest::withoutPresenceScopes(fn() => $validator->validate());
+```
+
+### Via configuração
+
+Cada entrada é uma classe invocável resolvida pelo container, que recebe o query builder
+e o nome da tabela. Use `'*'` para alcançar todas as tabelas:
+
+```php
+'presence_scopes' => [
+    '*' => [\App\Validation\TenantScope::class],
+    'authentications' => [\App\Validation\NotDeletedScope::class],
+],
+```
+
+```php
+namespace App\Validation;
+
+use Illuminate\Database\Query\Builder;
+
+class TenantScope
+{
+    public function __invoke(Builder $query, string $table): void
+    {
+        $query->where('tenant_id', tenant()->id);
+    }
+}
+```
+
+> Os escopos valem para `unique` **e** `exists`. O ponto de extensão é o
+> `PresenceVerifier` do Laravel, que não informa qual das duas regras originou a consulta.
 
 ---
 
@@ -280,6 +443,17 @@ Arquivo `config/rules.php`:
 
 ```php
 return [
+    // Validadores próprios: 'regra' => Classe::class
+    'validators' => [
+        // 'my_document' => \App\Validators\MyDocument::class,
+    ],
+
+    // Condições extras aplicadas às regras unique e exists
+    'presence_scopes' => [
+        // '*' => [\App\Validation\TenantScope::class],
+        // 'authentications' => [\App\Validation\NotDeletedScope::class],
+    ],
+
     // Regras definidas em código
     'forms' => [
         'user_registration' => [
@@ -326,6 +500,25 @@ Tabela `form_requests`:
 2. **Banco de Dados** - Busca regras persistidas
 3. **Configuração** - Busca regras definidas em código
 4. **Mensagens** - Gera mensagens padrão se necessário
+
+### Validação
+
+Os validadores customizados são registrados no boot via `Validator::extend`, a partir do
+`RulesRegistry` — que reúne os validadores nativos, os das classes `RulesContract` e os
+declarados em `config('rules.validators')`.
+
+Para as regras `unique` e `exists`, o package substitui o `validation.presence` do Laravel
+por um `ScopedPresenceVerifier`, que aplica os escopos registrados. Um presence verifier
+totalmente customizado da aplicação tem precedência e é preservado.
+
+---
+
+## 🧪 Testes
+
+```bash
+composer install
+composer test
+```
 
 ---
 
