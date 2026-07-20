@@ -17,6 +17,7 @@ class FormRequestResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
+            'id' => $this->id,
             'name' => $this->form,
             'rules' => $this->rules,
             'messages' => $this->messages ?? [],
