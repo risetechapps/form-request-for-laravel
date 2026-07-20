@@ -90,8 +90,11 @@ class ValidationRuleRepository
                     continue;
                 }
 
-                $rule = str_replace(
-                    ["{$key}", "{{$key}}"],
+                // Substitui apenas placeholders delimitados ({id}) ou prefixados (:id),
+                // nunca a substring crua "id" — evita corromper nomes como paid, video_id, width.
+                $rule = str_replace('{' . $key . '}', (string) $value, $rule);
+                $rule = preg_replace(
+                    '/:' . preg_quote($key, '/') . '\b/',
                     (string) $value,
                     $rule
                 );
@@ -261,5 +264,27 @@ class ValidationRuleRepository
             $keys[] = $cacheKey;
             $this->cache->put($registryKey, $keys, $this->cacheTtl);
         }
+    }
+
+    /**
+     * Remove todas as entradas de cache associadas a um formulário.
+     *
+     * Limpa as chaves derivadas de parâmetros (registradas em storeCacheKey),
+     * a chave base sem parâmetros e o próprio registro de chaves.
+     */
+    public function clearCache(string $name): void
+    {
+        if (!$this->cacheEnabled) {
+            return;
+        }
+
+        $registryKey = self::CACHE_KEY_REGISTRY . $name;
+
+        foreach ($this->cache->get($registryKey, []) as $cacheKey) {
+            $this->cache->forget($cacheKey);
+        }
+
+        $this->cache->forget($registryKey);
+        $this->cache->forget(self::CACHE_KEY_PREFIX . $name);
     }
 }
