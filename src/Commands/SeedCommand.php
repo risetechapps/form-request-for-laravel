@@ -3,6 +3,7 @@
 namespace RiseTechApps\FormRequest\Commands;
 
 use Illuminate\Console\Command;
+use RiseTechApps\FormRequest\Database\Seeds\FormRequestSeeder;
 
 class SeedCommand extends Command
 {
@@ -13,8 +14,7 @@ class SeedCommand extends Command
     public function handle(): void
     {
         $this->call('db:seed', [
-            '--class' => \RiseTechApps\FormRequest\Database\seeds\FormRequestSeeder::class,
-
+            '--class' => FormRequestSeeder::class,
         ]);
 
         $this->info('Form request seeder executed successfully.');
