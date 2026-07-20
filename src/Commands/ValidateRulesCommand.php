@@ -10,8 +10,7 @@ use RiseTechApps\FormRequest\Models\FormRequest as FormRequestModel;
 class ValidateRulesCommand extends Command
 {
     protected $signature = 'form-request:validate-rules
-                            {--form= : Validar apenas um formulário específico}
-                            {--fix : Tentar corrigir regras inválidas}';
+                            {--form= : Validar apenas um formulário específico}';
 
     protected $description = 'Validar sintaxe das regras de validação';
 
