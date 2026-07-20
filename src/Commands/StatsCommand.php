@@ -83,7 +83,7 @@ class StatsCommand extends Command
             foreach ($formRequestModel->all() as $form) {
                 $rulesCount = count($form->rules ?? []);
                 $messagesCount = count($form->messages ?? []);
-                $updated = $form->updated_at->format('d/m/Y H:i');
+                $updated = $form->updated_at?->format('d/m/Y H:i') ?? 'N/A';
                 $this->line("  • {$form->form}");
                 $this->line("    Regras: {$rulesCount} | Mensagens: {$messagesCount} | Atualizado: {$updated}");
             }
