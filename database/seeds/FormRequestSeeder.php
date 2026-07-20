@@ -14,6 +14,12 @@ class FormRequestSeeder extends Seeder
 
         foreach ($rules->allRules() as $key => $value) {
 
+            // 'form_request' é o schema interno do CRUD do próprio pacote,
+            // resolvido via configuração. Não deve ser persistido como form editável.
+            if ($key === 'form_request') {
+                continue;
+            }
+
             if(!FormRequest::where('form' , $key)->exists()){
 
                 FormRequest::create([
