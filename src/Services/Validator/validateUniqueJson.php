@@ -28,10 +28,17 @@ class validateUniqueJson implements ValidatorContract
 
             [$jsonField, $jsonKey] = explode('.', (string) $jsonPath);
 
-            return DB::table($table)
-                    ->where("{$jsonField}->{$jsonKey}", $value)
-                    ->where('id', '!=', $valueId)
-                    ->count() === 0;
+            $query = DB::table($table)
+                ->where("{$jsonField}->{$jsonKey}", $value);
+
+            // Exclui o próprio registro apenas em update (id informado).
+            // No create $valueId é null: `id != null` nunca casa em SQL e
+            // desativaria silenciosamente a checagem de unicidade.
+            if (!is_null($valueId)) {
+                $query->where('id', '!=', $valueId);
+            }
+
+            return $query->count() === 0;
         } catch (\Exception $exception) {
 
             logglyError()->exception($exception)
