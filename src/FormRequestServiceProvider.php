@@ -4,6 +4,9 @@ namespace RiseTechApps\FormRequest;
 
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Validation\DatabasePresenceVerifier;
+use RiseTechApps\FormRequest\Validation\PresenceScopeRegistry;
+use RiseTechApps\FormRequest\Validation\ScopedPresenceVerifier;
 use RiseTechApps\FormRequest\Commands\ClearCacheCommand;
 use RiseTechApps\FormRequest\Commands\ExportRulesCommand;
 use RiseTechApps\FormRequest\Commands\ImportRulesCommand;
@@ -52,6 +55,7 @@ class FormRequestServiceProvider extends ServiceProvider
         $this->app->booted(function () use ($registry) {
             $this->registerRules($registry);
             $this->registerFormRegistry($registry);
+            $this->registerConfiguredPresenceScopes($this->app->make(PresenceScopeRegistry::class));
         });
     }
 
@@ -82,11 +86,51 @@ class FormRequestServiceProvider extends ServiceProvider
 
         $this->app->singleton(FormRequest::class, fn() => new FormRequest);
 
+        // Accessor usado por FormRequestFacade; sem o alias a facade não resolve.
+        $this->app->alias(FormRequest::class, 'form-request');
+
         // FormRegistry será registrado no boot após as regras serem carregadas
         $this->app->singleton(ValidationRuleRepository::class);
         $this->app->singleton(FormManager::class);
 
         $this->app->singleton(\RiseTechApps\FormRequest\RulesRegistry::class, fn($app) => new \RiseTechApps\FormRequest\RulesRegistry());
+
+        $this->registerPresenceVerifier();
+    }
+
+    /**
+     * Substitui o presence verifier padrão por um que aplica os escopos
+     * registrados a todas as consultas das regras unique e exists.
+     */
+    private function registerPresenceVerifier(): void
+    {
+        $this->app->singleton(PresenceScopeRegistry::class);
+
+        $this->app->extend('validation.presence', function ($verifier, $app) {
+            // Um verifier totalmente customizado da aplicação tem precedência.
+            if (!$verifier instanceof DatabasePresenceVerifier || $verifier instanceof ScopedPresenceVerifier) {
+                return $verifier;
+            }
+
+            return new ScopedPresenceVerifier($app['db'], $app[PresenceScopeRegistry::class]);
+        });
+    }
+
+    /**
+     * Registra os escopos declarados na configuração. Cada entrada é uma classe
+     * invocável resolvida pelo container, no formato tabela => [Classe::class].
+     */
+    private function registerConfiguredPresenceScopes(PresenceScopeRegistry $registry): void
+    {
+        foreach (config('rules.presence_scopes', []) as $table => $scopes) {
+            foreach ((array)$scopes as $scope) {
+                $registry->scope(
+                    $table,
+                    is_string($scope) ? $this->app->make($scope)(...) : $scope,
+                    is_string($scope) ? $scope : null
+                );
+            }
+        }
     }
 
     /**
