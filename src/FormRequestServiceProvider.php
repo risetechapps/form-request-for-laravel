@@ -4,6 +4,7 @@ namespace RiseTechApps\FormRequest;
 
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 use Illuminate\Validation\DatabasePresenceVerifier;
 use RiseTechApps\FormRequest\Validation\PresenceScopeRegistry;
 use RiseTechApps\FormRequest\Validation\ScopedPresenceVerifier;
@@ -34,6 +35,10 @@ class FormRequestServiceProvider extends ServiceProvider
             $this->publishes([
                 __DIR__ . '/../config/config.php' => config_path('rules.php'),
             ], 'config');
+
+            $this->publishes([
+                __DIR__ . '/lang' => $this->app->langPath('vendor/form-request'),
+            ], 'lang');
         }
 
         $this->commands([
@@ -48,7 +53,9 @@ class FormRequestServiceProvider extends ServiceProvider
             WarmCacheCommand::class,
         ]);
 
-        $this->loadTranslationsFrom(__DIR__ . '/lang');
+        // Namespace próprio para que as mensagens do package não sejam
+        // mescladas nos arquivos de tradução da aplicação.
+        $this->loadTranslationsFrom(__DIR__ . '/lang', 'form-request');
 
         $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
 
@@ -144,8 +151,25 @@ class FormRequestServiceProvider extends ServiceProvider
         foreach ($validator as $rule => $className) {
 
             if (new $className() instanceof ValidatorContract) {
-                Validator::extend($rule, fn($attribute, $value, $parameters, $validator) => $className::validate($attribute, $value, $parameters, $validator));
+                Validator::extend(
+                    $rule,
+                    fn($attribute, $value, $parameters, $validator) => $className::validate($attribute, $value, $parameters, $validator),
+                    $this->defaultMessage($rule)
+                );
             }
         }
+    }
+
+    /**
+     * Mensagem padrão da regra, usada apenas quando a aplicação não define a
+     * sua própria em validation.{regra} ou validation.custom.{campo}.{regra}.
+     */
+    private function defaultMessage(string $rule): ?string
+    {
+        $key = 'form-request::validation.' . Str::snake($rule);
+
+        $message = trans($key);
+
+        return $message === $key ? null : $message;
     }
 }

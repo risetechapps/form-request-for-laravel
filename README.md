@@ -31,12 +31,17 @@ composer require risetechapps/form-request-for-laravel
 php artisan vendor:publish --tag=config
 ```
 
-### 4⃣ Executar Migrations
+### 4⃣ (Opcional) Publicar Traduções
+```bash
+php artisan vendor:publish --tag=lang
+```
+
+### 5⃣ Executar Migrations
 ```bash
 php artisan form-request:migrate
 ```
 
-### 5⃣ (Opcional) Popular regras padrão
+### 6⃣ (Opcional) Popular regras padrão
 ```bash
 php artisan form-request:seed
 ```
@@ -339,6 +344,44 @@ demais valores (`upper`, `lower`, `number`, `symbol`) substituem a lista de exig
 ```
 
 Letras acentuadas contam como letra, e não como símbolo.
+
+### Mensagens de erro
+
+Todas as regras acima têm mensagem padrão **em inglês**, registrada como fallback. Elas
+só aparecem quando a aplicação não define a sua própria — a tradução para outros idiomas
+fica a cargo de quem usa o package.
+
+A ordem de precedência é a do próprio Laravel:
+
+1. Mensagem inline do FormRequest (`messages()` ou o 3º argumento de `Validator::make`)
+2. `validation.custom.{campo}.{regra}` nos arquivos de tradução da aplicação
+3. `validation.{regra}` nos arquivos de tradução da aplicação
+4. Mensagem padrão do package (inglês)
+
+Para traduzir, basta declarar as chaves no `lang` da aplicação:
+
+```php
+// lang/pt_BR/validation.php
+return [
+    'cpf' => 'O campo :attribute deve conter um CPF válido.',
+    'strong_password' => 'A senha informada é muito fraca.',
+    'pix_key' => 'O campo :attribute deve conter uma chave Pix válida.',
+];
+```
+
+> A chave é o nome da regra em **snake_case**, que é como o Laravel a procura.
+> Atenção nas regras em camelCase: `uniqueJson` vira `validation.unique_json` e
+> `existsJson` vira `validation.exists_json`.
+
+Se preferir partir das mensagens do package, publique-as e edite:
+
+```bash
+php artisan vendor:publish --tag=lang
+```
+
+Os arquivos vão para `lang/vendor/form-request/`. Esse caminho altera apenas o **fallback**;
+para aplicações multi-idioma prefira declarar `validation.{regra}` no `lang` da aplicação,
+que é resolvido a cada validação e respeita o locale do request.
 
 ### Registrando validadores próprios
 
