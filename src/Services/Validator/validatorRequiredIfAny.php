@@ -17,17 +17,24 @@ class validatorRequiredIfAny implements ValidatorContract
 
             $data = $validator->getData();
 
-            $first  = data_get($data, $parameters[0]);
-            $second = data_get($data, $parameters[1]);
+            // Obrigatório se QUALQUER um dos campos informados estiver preenchido
+            // (presente e não-vazio), conforme documentado. Suporta N parâmetros.
+            $shouldBeRequired = false;
 
-            // Se qualquer um for true / 1 / "true", então o campo é obrigatório
-            $shouldBeRequired = filter_var($first, FILTER_VALIDATE_BOOLEAN) || filter_var($second, FILTER_VALIDATE_BOOLEAN);
+            foreach ($parameters as $param) {
+                $other = data_get($data, $param);
 
-            if ($shouldBeRequired) {
-                return !is_null($value) && $value !== '';
+                if (!is_null($other) && $other !== '' && $other !== []) {
+                    $shouldBeRequired = true;
+                    break;
+                }
             }
 
-            // Se nenhum for true, validação passa mesmo sem valor
+            if ($shouldBeRequired) {
+                return !is_null($value) && $value !== '' && $value !== [];
+            }
+
+            // Se nenhum estiver preenchido, validação passa mesmo sem valor
             return true;
 
         } catch (\Exception $exception) {
