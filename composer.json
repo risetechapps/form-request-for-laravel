@@ -38,7 +38,10 @@
     "autoload-dev": {
         "psr-4": {
             "RiseTechApps\\FormRequest\\Tests\\": "tests"
-        }
+        },
+        "files": [
+            "tests/Support/helpers.php"
+        ]
     },
     "scripts": {
         "test": "vendor/bin/phpunit",
