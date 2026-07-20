@@ -12,7 +12,7 @@ use RiseTechApps\HasUuid\Traits\HasUuid;
  */
 class FormRequest extends Model
 {
-    use HasFactory, Notifiable, HasUuid;//, HasLoggly;
+    use HasFactory, Notifiable, HasUuid;
 
     /**
      * @var list<string>
@@ -29,7 +29,6 @@ class FormRequest extends Model
      * @var list<string>
      */
     protected $hidden = [
-        'id',
         'data',
     ];
 
