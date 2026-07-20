@@ -3,6 +3,8 @@
 namespace RiseTechApps\FormRequest\Commands;
 
 use Illuminate\Console\Command;
+use RiseTechApps\FormRequest\FormDefinitions\FormRegistry;
+use RiseTechApps\FormRequest\Models\FormRequest as FormRequestModel;
 use RiseTechApps\FormRequest\ValidationRuleRepository;
 
 class ClearCacheCommand extends Command
@@ -13,22 +15,22 @@ class ClearCacheCommand extends Command
 
     protected $description = 'Limpar o cache de regras de validação';
 
-    public function handle(ValidationRuleRepository $repository): int
-    {
+    public function handle(
+        ValidationRuleRepository $repository,
+        FormRegistry $registry,
+        FormRequestModel $formRequestModel
+    ): int {
         $formName = $this->argument('form');
 
         if ($formName) {
             $repository->clearCache($formName);
             $this->info("✅ Cache limpo para o formulário '{$formName}'.");
         } elseif ($this->option('all')) {
-            // Como não temos método para listar todas as chaves de cache,
-            // vamos limpar usando o padrão de chave
-            $this->clearAllCache($repository);
+            $this->clearAllCache($repository, $registry, $formRequestModel);
         } else {
             $this->warn('⚠️  Use um nome de formulário ou a opção --all');
             $this->line('');
             $this->line('Exemplos:');
-            $this->line("  php artisan {$this->signature}");
             $this->line('  php artisan form-request:clear-cache clients');
             $this->line('  php artisan form-request:clear-cache --all');
             return 1;
@@ -37,24 +39,25 @@ class ClearCacheCommand extends Command
         return 0;
     }
 
-    private function clearAllCache(ValidationRuleRepository $repository): void
-    {
-        // Tenta limpar todas as chaves conhecidas
-        // Isso é uma aproximação já que não temos listagem de todas as chaves
+    private function clearAllCache(
+        ValidationRuleRepository $repository,
+        FormRegistry $registry,
+        FormRequestModel $formRequestModel
+    ): void {
         $this->info('🧹 Limpando cache de todos os formulários...');
 
-        // Vamos usar reflection para acessar o cache
-        try {
-            $reflection = new \ReflectionClass($repository);
-            $property = $reflection->getProperty('cache');
-            $cache = $property->getValue($repository);
+        // Coleta os nomes de formulários do banco e da configuração e invalida
+        // apenas as chaves do pacote — nunca o cache inteiro da aplicação.
+        $names = collect($formRequestModel->newQuery()->pluck('form'))
+            ->merge(array_keys($registry->all()))
+            ->filter()
+            ->unique()
+            ->values();
 
-            $prefix = 'form-request:';
-            $cache->flush();
-
-            $this->info('✅ Cache de todos os formulários limpo com sucesso!');
-        } catch (\Exception $e) {
-            $this->error('❌ Erro ao limpar cache: ' . $e->getMessage());
+        foreach ($names as $name) {
+            $repository->clearCache($name);
         }
+
+        $this->info("✅ Cache limpo para {$names->count()} formulário(s).");
     }
 }
