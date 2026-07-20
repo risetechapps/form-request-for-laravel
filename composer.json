@@ -20,7 +20,8 @@
         "illuminate/support": "^12.0",
         "facade/ignition-contracts": "^1.0.2",
         "risetechapps/has-uuid-for-laravel": "^1.2",
-        "tpetry/laravel-postgresql-enhanced": "^3.7.0"
+        "tpetry/laravel-postgresql-enhanced": "^3.7.0",
+        "risetechapps/monitoring-for-laravel": "^4.0.1"
     },
     "require-dev": {
         "orchestra/testbench": "^10.0",
