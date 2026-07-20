@@ -67,7 +67,16 @@ class RulesRegistry
             'cpf' => Validator\validateCPF::class,
             'cnpj' => Validator\validateCNPJ::class,
             'uniqueJson' => Validator\validateUniqueJson::class,
-            'required_if_any' => Validator\validatorRequiredIfAny::class
-        ]);
+            'existsJson' => Validator\validateExistsJson::class,
+            'required_if_any' => Validator\validatorRequiredIfAny::class,
+            'cnae' => Validator\validateCnae::class,
+            'ncm' => Validator\validateNcm::class,
+            'strong_password' => Validator\validateStrongPassword::class,
+            'credit_card' => Validator\validateCreditCard::class,
+            'pix_key' => Validator\validatePixKey::class,
+            'bank_barcode' => Validator\validateBankBarcode::class,
+            'digitable_line' => Validator\validateDigitableLine::class,
+            'bank_slip' => Validator\validateDigitableLine::class,
+        ], config('rules.validators', []));
     }
 }
