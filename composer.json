@@ -39,10 +39,7 @@
     "autoload-dev": {
         "psr-4": {
             "RiseTechApps\\FormRequest\\Tests\\": "tests"
-        },
-        "files": [
-            "tests/Support/helpers.php"
-        ]
+        }
     },
     "scripts": {
         "test": "vendor/bin/phpunit",
@@ -64,5 +61,5 @@
     },
     "minimum-stability": "stable",
     "prefer-stable": true,
-    "version": "2.2.1"
+    "version": "2.3.0"
 }
