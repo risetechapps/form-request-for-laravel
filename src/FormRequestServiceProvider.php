@@ -67,18 +67,19 @@ class FormRequestServiceProvider extends ServiceProvider
     }
 
     /**
-     * Registra o FormRegistry após as classes de regras serem registradas.
+     * Popula o FormRegistry após as classes de regras serem registradas.
+     *
+     * Preenche a instância já existente no container em vez de substituí-la:
+     * a aplicação pode ter chamado FormRequest::register() no boot do seu
+     * próprio provider, que roda antes deste callback, e trocar o binding
+     * descartaria esses formulários.
      */
     private function registerFormRegistry(RulesRegistry $registry): void
     {
-        // Cria o FormRegistry com os dados atuais do RulesRegistry
-        $formRegistry = new FormRegistry(
+        $this->app->make(FormRegistry::class)->registerMany(
             $registry->allRules(),
             $registry->allMessages()
         );
-
-        // Registra o singleton com a instância já criada
-        $this->app->instance(FormRegistry::class, $formRegistry);
     }
 
     /**
@@ -96,7 +97,12 @@ class FormRequestServiceProvider extends ServiceProvider
         // Accessor usado por FormRequestFacade; sem o alias a facade não resolve.
         $this->app->alias(FormRequest::class, 'form-request');
 
-        // FormRegistry será registrado no boot após as regras serem carregadas
+        // Precisa existir já no register(): sem binding o container faria
+        // autowiring e devolveria uma instância nova a cada resolução,
+        // perdendo tudo que fosse registrado antes do callback booted().
+        // O conteúdo do RulesRegistry é carregado depois, no boot.
+        $this->app->singleton(FormRegistry::class);
+
         $this->app->singleton(ValidationRuleRepository::class);
         $this->app->singleton(FormManager::class);
 
