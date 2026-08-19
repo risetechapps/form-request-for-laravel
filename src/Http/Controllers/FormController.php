@@ -70,7 +70,7 @@ class FormController extends Controller
     public function store(StoreFormRequest $request): JsonResponse
     {
         try {
-            $form = $this->forms->create($request->validationData());
+            $form = $this->forms->create($request->validated());
 
             logglyInfo()->withRequest($request)->performedOn($form)->log("Success when registering registration");
 
@@ -116,7 +116,7 @@ class FormController extends Controller
 
         try {
             $form = $this->forms->findOrFail((string)$request->route('id'));
-            $form = $this->forms->update($form, $request->validationData());
+            $form = $this->forms->update($form, $request->validated());
 
             logglyInfo()->withRequest($request)->performedOn($form)->log("Success by updating the registration");
 
