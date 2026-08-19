@@ -4,7 +4,6 @@ namespace RiseTechApps\FormRequest;
 
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
-use Illuminate\Support\Arr;
 use RiseTechApps\FormRequest\FormDefinitions\FormDefinition;
 use RiseTechApps\FormRequest\FormDefinitions\FormRegistry;
 use RiseTechApps\FormRequest\Models\FormRequest as FormRequestModel;
@@ -12,7 +11,6 @@ use RiseTechApps\FormRequest\Models\FormRequest as FormRequestModel;
 class ValidationRuleRepository
 {
     private const string CACHE_KEY_PREFIX = 'form-request:';
-    private const string CACHE_KEY_REGISTRY = 'form-request:keys:';
 
     private readonly CacheRepository $cache;
     private readonly bool $cacheEnabled;
@@ -38,11 +36,10 @@ class ValidationRuleRepository
      */
     public function getRules(string $name, array $parameter = []): array
     {
-        // parâmetros que NÃO devem influenciar o cache
-        $cachedParameters = Arr::except($parameter, ['id']);
-
-        $validationRules = $this->remember($name, $cachedParameters, function () use ($name, $cachedParameters) {
-            $fromDatabase = $this->fetchRulesFromDatabase($name, $cachedParameters);
+        // O contexto não entra na chave: ele só interpola as regras já
+        // resolvidas, então o valor cacheado é o mesmo para qualquer contexto.
+        $validationRules = $this->remember($name, function () use ($name) {
+            $fromDatabase = $this->fetchRulesFromDatabase($name);
 
             if (!empty($fromDatabase['rules'])) {
                 return $fromDatabase;
@@ -76,6 +73,16 @@ class ValidationRuleRepository
 
     /**
      * Substitui placeholders (:id, {id}) pelos valores reais.
+     *
+     * A substituição acontece apenas na porção de parâmetros de cada segmento,
+     * nunca no nome da regra. O primeiro ':' de um segmento é o separador do
+     * Laravel: consumi-lo funde nome e valor e produz uma regra inexistente
+     * (uniqueCpfAuthentication:id viraria uniqueCpfAuthentication<uuid>).
+     *
+     * Como consequência, um parâmetro que apenas se chama como a chave do
+     * contexto é preservado — 'exists:tabela,id' mantém a coluna id, e
+     * 'regraCustomizada:id' entrega 'id' ao validador, como fazem as regras
+     * nativas que referenciam outro campo (same:password, gt:idade).
      */
     private function resolveRuleParameters(array $rules, array $parameters): array
     {
@@ -84,24 +91,44 @@ class ValidationRuleRepository
                 return $rule;
             }
 
-            foreach ($parameters as $key => $value) {
+            $segments = array_map(
+                fn(string $segment): string => $this->resolveSegmentParameters($segment, $parameters),
+                explode('|', $rule)
+            );
 
-                if (str_contains($rule, 'exists:') && $key === 'id') {
-                    continue;
-                }
-
-                // Substitui apenas placeholders delimitados ({id}) ou prefixados (:id),
-                // nunca a substring crua "id" — evita corromper nomes como paid, video_id, width.
-                $rule = str_replace('{' . $key . '}', (string) $value, $rule);
-                $rule = preg_replace(
-                    '/:' . preg_quote($key, '/') . '\b/',
-                    (string) $value,
-                    $rule
-                );
-            }
-
-            return $rule;
+            return implode('|', $segments);
         }, $rules);
+    }
+
+    /**
+     * Resolve os placeholders de um único segmento "regra:parametros".
+     *
+     * @param array<string, mixed> $parameters
+     */
+    private function resolveSegmentParameters(string $segment, array $parameters): string
+    {
+        $separator = strpos($segment, ':');
+
+        // Regra sem parâmetros: nada a substituir, e o nome fica intocado.
+        if ($separator === false) {
+            return $segment;
+        }
+
+        $name = substr($segment, 0, $separator);
+        $arguments = substr($segment, $separator + 1);
+
+        foreach ($parameters as $key => $value) {
+            // Placeholders delimitados ({id}) ou prefixados (:id), nunca a
+            // substring crua "id" — evita corromper paid, video_id, width.
+            $arguments = str_replace('{' . $key . '}', (string) $value, $arguments);
+            $arguments = preg_replace(
+                '/:' . preg_quote($key, '/') . '\b/',
+                (string) $value,
+                $arguments
+            );
+        }
+
+        return $name . ':' . $arguments;
     }
 
     /**
@@ -123,11 +150,20 @@ class ValidationRuleRepository
 
                 $segments = explode(',', $part);
 
-                if (isset($segments[2])) {
-                    $segments[2] = (string) $id;
-                } else {
-                    $segments[] = (string) $id;
+                // Um except explícito é preservado, inclusive a interpolação
+                // nativa do Laravel: unique:tabela,coluna,[id].
+                if (isset($segments[2]) && $segments[2] !== '') {
+                    continue;
                 }
+
+                // Coluna omitida (unique:tabela): sem preencher a posição 1 o
+                // id cairia nela e viraria o nome da coluna. 'NULL' é o literal
+                // que faz o Laravel voltar a usar o nome do atributo.
+                if (!isset($segments[1]) || $segments[1] === '') {
+                    $segments[1] = 'NULL';
+                }
+
+                $segments[2] = (string) $id;
 
                 $part = implode(',', $segments);
             }
@@ -138,13 +174,16 @@ class ValidationRuleRepository
 
     /**
      * Busca regras no banco.
+     *
+     * A resolução é feita apenas pelo nome do formulário. O contexto de
+     * validação não entra na consulta: ele é dado de interpolação das regras,
+     * aplicado adiante por setIdUpdate() e resolveRuleParameters(), e suas
+     * chaves não correspondem a colunas de form_requests.
      */
-    private function fetchRulesFromDatabase(string $name, array $parameter = []): array
+    private function fetchRulesFromDatabase(string $name): array
     {
-        $where = array_merge(['form' => $name], $parameter);
-
         $result = $this->forms->newQuery()
-            ->where($where)
+            ->where('form', $name)
             ->first(['rules', 'messages']);
 
         if (!$result) {
@@ -224,53 +263,22 @@ class ValidationRuleRepository
     /**
      * Cache helpers
      */
-    private function remember(string $name, array $parameter, callable $callback): array
+    private function remember(string $name, callable $callback): array
     {
         if (!$this->cacheEnabled) {
             return $callback();
         }
 
-        $key = $this->cacheKey($name, $parameter);
-
-        return $this->cache->remember($key, $this->cacheTtl, function () use ($callback, $name, $key) {
-            $value = $callback();
-            $this->storeCacheKey($name, $key);
-            return $value;
-        });
+        return $this->cache->remember($this->cacheKey($name), $this->cacheTtl, $callback);
     }
 
-    private function cacheKey(string $name, array $parameter = []): string
+    private function cacheKey(string $name): string
     {
-        if (empty($parameter)) {
-            return self::CACHE_KEY_PREFIX . $name;
-        }
-
-        ksort($parameter);
-
-        return sprintf(
-            '%s%s:%s',
-            self::CACHE_KEY_PREFIX,
-            $name,
-            md5(json_encode($parameter))
-        );
-    }
-
-    private function storeCacheKey(string $name, string $cacheKey): void
-    {
-        $registryKey = self::CACHE_KEY_REGISTRY . $name;
-        $keys = $this->cache->get($registryKey, []);
-
-        if (!in_array($cacheKey, $keys, true)) {
-            $keys[] = $cacheKey;
-            $this->cache->put($registryKey, $keys, $this->cacheTtl);
-        }
+        return self::CACHE_KEY_PREFIX . $name;
     }
 
     /**
-     * Remove todas as entradas de cache associadas a um formulário.
-     *
-     * Limpa as chaves derivadas de parâmetros (registradas em storeCacheKey),
-     * a chave base sem parâmetros e o próprio registro de chaves.
+     * Remove a entrada de cache do formulário.
      */
     public function clearCache(string $name): void
     {
@@ -278,13 +286,6 @@ class ValidationRuleRepository
             return;
         }
 
-        $registryKey = self::CACHE_KEY_REGISTRY . $name;
-
-        foreach ($this->cache->get($registryKey, []) as $cacheKey) {
-            $this->cache->forget($cacheKey);
-        }
-
-        $this->cache->forget($registryKey);
-        $this->cache->forget(self::CACHE_KEY_PREFIX . $name);
+        $this->cache->forget($this->cacheKey($name));
     }
 }
