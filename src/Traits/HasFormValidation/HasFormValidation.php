@@ -11,6 +11,36 @@ use Illuminate\Support\Arr;
 trait HasFormValidation
 {
     /**
+     * Valores contextuais que as regras podem referenciar, como o id do
+     * registro em edição. Sobrescreva para declará-los uma única vez.
+     *
+     * @return array<string, mixed>
+     */
+    protected function validationContext(): array
+    {
+        return [];
+    }
+
+    /**
+     * Acrescenta o contexto aos dados validados.
+     *
+     * O contexto passado a ValidationRuleRepository::getRules() interpola as
+     * strings das regras; os validadores, porém, leem de getData(), que sai
+     * daqui. Sem este merge uma regra como 'minhaRegra:id' recebe o nome do
+     * campo mas não encontra o valor — e a interpolação nativa do Laravel,
+     * 'unique:tabela,coluna,[id]', também não resolve.
+     *
+     * O contexto tem precedência sobre o payload: ele vem da rota ou da sessão
+     * autenticada, e o corpo da requisição não deve poder sobrescrevê-lo.
+     *
+     * @return array<string, mixed>
+     */
+    public function validationData(): array
+    {
+        return array_merge(parent::validationData(), $this->validationContext());
+    }
+
+    /**
      * Trata uma tentativa de validação que falhou.
      *
      * @param Validator $validator

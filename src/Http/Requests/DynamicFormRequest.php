@@ -25,28 +25,25 @@ abstract class DynamicFormRequest extends FormRequest
      */
     protected array $resolvedMessages = [];
 
-    public function __construct(
-        protected ValidationRuleRepository $validatorRuleRepository,
-        array $query = [],
-        array $request = [],
-        array $attributes = [],
-        array $cookies = [],
-        array $files = [],
-        array $server = [],
-        $content = null
-    ) {
-        parent::__construct($query, $request, $attributes, $cookies, $files, $server, $content);
-    }
+    /**
+     * Resolvido sob demanda, e não pelo construtor: a fábrica estática do
+     * Symfony chama new static() com a assinatura de Request, então declarar
+     * uma dependência ali quebra Request::create() e qualquer código que a use.
+     */
+    protected ?ValidationRuleRepository $validatorRuleRepository = null;
 
     /**
      * Chave do registro utilizada para resolver a definição do formulário.
      */
     abstract protected function formKey(): string;
 
-    protected function validationContext(): array
+    protected function validationRuleRepository(): ValidationRuleRepository
     {
-        return [];
+        return $this->validatorRuleRepository ??= app(ValidationRuleRepository::class);
     }
+
+    // validationContext() e validationData() vêm de HasFormValidation, para
+    // que os form requests que usam apenas o trait tenham o mesmo comportamento.
 
     /**
      * Resolve dinamicamente as regras de validação em tempo de execução.
@@ -74,7 +71,12 @@ abstract class DynamicFormRequest extends FormRequest
     }
 
     /**
-     * Traduz as chaves de mensagem usando textos do pacote, da aplicação ou padrões do Laravel.
+     * Traduz as chaves de mensagem usando textos da aplicação ou os padrões do pacote.
+     *
+     * As chaves recebidas seguem o formato "campo.regra" gerado por
+     * ValidationRuleRepository::extractRules(). A ordem reproduz a precedência do
+     * Laravel: validation.custom.{campo}.{regra}, validation.{regra} e, por último,
+     * a mensagem padrão do pacote em form-request::validation.{regra}.
      *
      * @param array<string, string> $messages
      * @return array<string, string>
@@ -82,27 +84,33 @@ abstract class DynamicFormRequest extends FormRequest
     protected function translateMessages(array $messages): array
     {
         return array_map(function (string $value) {
-            $packageKey = 'formrequest::validation.' . $value;
-            if (Lang::has($packageKey)) {
-                return __($packageKey);
-            }
-
             [$attribute, $rule] = array_pad(explode('.', $value, 2), 2, null);
 
+            if ($attribute === null || $attribute === '' || $rule === null || $rule === '') {
+                return $value;
+            }
+
             $customKey = sprintf('validation.custom.%s.%s', $attribute, $rule);
-            if ($attribute && $rule && Lang::has($customKey)) {
+            if (Lang::has($customKey)) {
                 return __($customKey);
             }
 
-            $fallbackKey = 'validation.' . $rule;
-            if ($rule && Lang::has($fallbackKey)) {
-                $readableAttribute = Str::of((string) $attribute)
-                    ->replace('_', ' ')
-                    ->lower()
-                    ->ucfirst()
-                    ->toString();
+            $readableAttribute = Str::of($attribute)
+                ->replace('_', ' ')
+                ->lower()
+                ->ucfirst()
+                ->toString();
 
+            $fallbackKey = 'validation.' . $rule;
+            if (Lang::has($fallbackKey)) {
                 return __($fallbackKey, ['attribute' => $readableAttribute]);
+            }
+
+            // Padrão do pacote: chave plana por nome de regra, no namespace
+            // registrado em FormRequestServiceProvider::boot().
+            $packageKey = 'form-request::validation.' . $rule;
+            if (Lang::has($packageKey)) {
+                return __($packageKey, ['attribute' => $readableAttribute]);
             }
 
             return $value;
@@ -118,7 +126,7 @@ abstract class DynamicFormRequest extends FormRequest
             return;
         }
 
-        $definition = $this->validatorRuleRepository->getRules($this->formKey(), $this->validationContext());
+        $definition = $this->validationRuleRepository()->getRules($this->formKey(), $this->validationContext());
         $this->resolvedRules = $definition['rules'];
         $this->resolvedMessages = $definition['messages'];
     }
