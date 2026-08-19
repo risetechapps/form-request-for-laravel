@@ -7,6 +7,7 @@ O **Laravel Form Request** é um package para Laravel que gerencia as regras de 
 - 📋 **Forms dinâmicos** - Regras de validação configuráveis em banco de dados
 - 📁 **Forms via código** - Regras definidas em classes PHP
 - 🔐 **Validadores customizados** - Documentos brasileiros, boletos, Pix, cartão e senha forte
+- 🔗 **Contexto de validação** - Valores da rota disponíveis às regras, com a sintaxe nativa do Laravel
 - 🏢 **Escopos de presença** - Condições extras nas regras `unique` e `exists` sem alterar a regra
 - ⚡ **Cache** - Cache automático das regras para melhor performance
 - 🔄 **Export/Import** - Migração de regras entre ambientes
@@ -105,37 +106,19 @@ php artisan form-request:stats --detailed
 
 ## 📝 Uso
 
-### Usando a Trait HasFormValidation
+### Estendendo DynamicFormRequest
 
-Crie um FormRequest que utiliza as regras dinâmicas:
+A forma recomendada. A classe declara apenas **qual** formulário resolver; o
+pacote cuida de buscar as regras, traduzir as mensagens e alimentar o validador:
 
 ```php
-use RiseTechApps\FormRequest\Traits\HasFormValidation\HasFormValidation;
-use RiseTechApps\FormRequest\ValidationRuleRepository;
+use RiseTechApps\FormRequest\Http\Requests\DynamicFormRequest;
 
-class StoreClientRequest extends FormRequest
+class StoreClientRequest extends DynamicFormRequest
 {
-    use HasFormValidation;
-
-    protected ValidationRuleRepository $ruleRepository;
-    protected array $result = [];
-
-    public function __construct(ValidationRuleRepository $validatorRuleRepository)
+    protected function formKey(): string
     {
-        parent::__construct();
-
-        $this->ruleRepository = $validatorRuleRepository;
-        $this->result = $this->ruleRepository->getRules('clients');
-    }
-
-    public function rules(): array
-    {
-        return $this->result['rules'];
-    }
-
-    public function messages(): array
-    {
-        return $this->result['messages'];
+        return 'clients';
     }
 
     public function authorize(): bool
@@ -144,6 +127,88 @@ class StoreClientRequest extends FormRequest
     }
 }
 ```
+
+Para uma atualização, declare o contexto — os valores que as regras podem
+referenciar:
+
+```php
+class UpdateClientRequest extends DynamicFormRequest
+{
+    protected function formKey(): string
+    {
+        return 'clients';
+    }
+
+    #[\Override]
+    protected function validationContext(): array
+    {
+        return ['id' => $this->route('id')];
+    }
+
+    public function authorize(): bool
+    {
+        return auth()->check() && auth()->user()->hasPermission('clients.update');
+    }
+}
+```
+
+As regras são resolvidas uma única vez por request e ficam em cache na instância.
+
+### Usando apenas a Trait HasFormValidation
+
+Se a classe já estende outro `FormRequest` e não pode trocar de base, o trait
+entrega o tratamento de erros e o mesmo mecanismo de contexto. Nesse caso a
+resolução das regras fica por sua conta:
+
+```php
+use Illuminate\Foundation\Http\FormRequest;
+use RiseTechApps\FormRequest\Traits\HasFormValidation\HasFormValidation;
+use RiseTechApps\FormRequest\ValidationRuleRepository;
+
+class StoreClientRequest extends FormRequest
+{
+    use HasFormValidation;
+
+    protected array $result = [];
+
+    public function __construct(
+        protected ValidationRuleRepository $repository,
+        array $query = [],
+        array $request = [],
+        array $attributes = [],
+        array $cookies = [],
+        array $files = [],
+        array $server = [],
+        $content = null
+    ) {
+        parent::__construct($query, $request, $attributes, $cookies, $files, $server, $content);
+
+        $this->result = $this->repository->getRules('clients', $this->validationContext());
+    }
+
+    protected function validationContext(): array
+    {
+        return ['id' => $this->route('id')];
+    }
+
+    public function rules(): array
+    {
+        return $this->result['rules'];
+    }
+
+    public function authorize(): bool
+    {
+        return auth()->check();
+    }
+}
+```
+
+> O construtor precisa repassar os sete parâmetros do `Request`. Omiti-los quebra
+> `Request::create()` e `duplicate()`, que constroem a classe posicionalmente.
+
+> Ao declarar `validationContext()` numa classe que o recebe do trait, **não** use
+> `#[\Override]`: não há método de pai correspondente e o PHP emite um erro fatal.
+> Em subclasses de `DynamicFormRequest` o atributo é válido.
 
 ### Registrando Regras via Código
 
@@ -278,6 +343,76 @@ Endpoints disponíveis:
 - `GET /api/admin/forms/{id}` - Ver formulário
 - `PUT /api/admin/forms/{id}` - Atualizar formulário
 - `DELETE /api/admin/forms/{id}` - Remover formulário
+
+---
+
+## 🔗 Contexto de validação
+
+O contexto são valores que as regras podem referenciar — tipicamente o id do
+registro em edição. Ele é declarado uma vez, em `validationContext()`, e o pacote
+o usa em dois lugares:
+
+1. **Ao resolver as regras** — interpola placeholders na string e completa o
+   `except` de regras `unique`.
+2. **Nos dados do validador** — o contexto é mesclado em `validationData()`, então
+   as regras o enxergam em tempo de execução.
+
+O contexto tem precedência sobre o corpo da requisição: ele vem da rota ou da
+sessão autenticada, e o payload não deve poder sobrescrevê-lo. Uma chave sem regra
+correspondente não aparece em `validated()` e portanto não é persistida.
+
+### Ignorar o próprio registro em `unique`
+
+Três formas, da mais idiomática para a mais explícita:
+
+```php
+// 1. Interpolação nativa do Laravel: lê o valor dos dados validados.
+'email' => 'required|email|unique:clients,email,[id]',
+
+// 2. Sem informar o except: o pacote completa com o id do contexto.
+'email' => 'required|email|unique:clients,email',
+
+// 3. Placeholder do pacote, para posições que o Laravel não interpola.
+'email' => 'required|email|unique:clients,email,{id}',
+```
+
+Um `except` informado explicitamente é sempre preservado — o preenchimento
+automático só ocorre quando a posição foi omitida.
+
+### Regras customizadas
+
+Um parâmetro que nomeia um campo é idioma nativo do Laravel (`same:password`,
+`gt:idade`). O pacote preserva a string, e quem resolve o valor é o validador:
+
+```php
+'cpf' => 'required|cpf|meuValidador:id',
+```
+
+```php
+public static function validate($attribute, $value, $parameters, $validator): bool
+{
+    $id = data_get($validator->getData(), $parameters[0] ?? 'id');
+    // ...
+}
+```
+
+### Placeholders do pacote
+
+Para posições que a sintaxe do Laravel não interpola, o contexto pode ser
+injetado na string da regra com `{chave}` ou `:chave`:
+
+```php
+'ref' => 'required|in:{tipo},outro',       // in:cliente,outro
+'ref' => 'required|in::tipo,outro',        // idem
+```
+
+A substituição ocorre apenas na porção de parâmetros da regra, nunca no nome.
+Um parâmetro que apenas se chama como a chave do contexto é preservado:
+`exists:clients,id` mantém a coluna `id`.
+
+> Para condições dinâmicas em `unique` e `exists` — tenant, soft delete — prefira
+> os [escopos de presença](#-escopos-de-unique-e-exists): eles se aplicam a todas
+> as regras sem alterar nenhuma string.
 
 ---
 
@@ -497,22 +632,6 @@ return [
         // 'authentications' => [\App\Validation\NotDeletedScope::class],
     ],
 
-    // Regras definidas em código
-    'forms' => [
-        'user_registration' => [
-            'rules' => [
-                'name' => 'required|string|max:255',
-                'email' => 'required|email|unique:users,email',
-            ],
-            'messages' => [
-                'email.unique' => 'validation.email_unique',
-            ],
-            'metadata' => [
-                'description' => 'Default rules for user registration forms.',
-            ],
-        ],
-    ],
-
     // Configuração de cache
     'cache' => [
         'enabled' => true,
@@ -539,10 +658,14 @@ Tabela `form_requests`:
 
 ### Fluxo de Resolução
 
-1. **Cache** - Verifica se existe no cache
-2. **Banco de Dados** - Busca regras persistidas
-3. **Configuração** - Busca regras definidas em código
-4. **Mensagens** - Gera mensagens padrão se necessário
+1. **Cache** - Verifica se existe no cache. Cada formulário usa uma única chave,
+   `form-request:{nome}`, invalidada a cada escrita.
+2. **Banco de Dados** - Busca regras persistidas, apenas pelo nome do formulário.
+3. **Configuração** - Se o banco não tiver o formulário, usa as regras em código.
+4. **Mensagens** - Gera mensagens padrão se o formulário não trouxer as suas.
+5. **Contexto** - Sobre o resultado cacheado, completa o `except` das regras
+   `unique` e resolve os placeholders. Por acontecer depois do cache, o contexto
+   não multiplica as entradas.
 
 ### Validação
 
