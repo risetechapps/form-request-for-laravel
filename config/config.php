@@ -14,22 +14,6 @@ return [
         // 'my_document' => \App\Validators\MyDocument::class,
     ],
 
-    'forms' => [
-        // 'user_registration' => [
-        //     'rules' => [
-        //         'name' => 'required|string',
-        //         'email' => 'required|email|unique:users,email',
-        //     ],
-        //     'messages' => [
-        //         'email.unique' => 'validation.email_unique',
-        //     ],
-        //     'metadata' => [
-        //         'description' => 'Regras padrão para formulários de cadastro de usuário.',
-        //         'description' => 'Default rules for user registration forms.',
-        //     ],
-        // ],
-    ],
-
     /*
      * Extra conditions appended to the queries of the unique and exists rules,
      * without touching the rule strings. Use '*' to reach every table.
