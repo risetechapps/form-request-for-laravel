@@ -27,6 +27,12 @@ return [
         // 'authentications' => [\App\Validation\NotDeletedScope::class],
     ],
 
+    /*
+     * Log channel used when a built-in validator fails internally, e.g. a
+     * misconfigured rule such as 'uniqueJson:table'. Null uses the default.
+     */
+    'log_channel' => null,
+
     'cache' => [
         'enabled' => true,
         'ttl' => 300,

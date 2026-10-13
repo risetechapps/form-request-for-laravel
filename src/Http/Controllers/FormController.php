@@ -2,15 +2,21 @@
 
 namespace RiseTechApps\FormRequest\Http\Controllers;
 
-use App\Http\Controllers\Controller;
+use Illuminate\Routing\Controller;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
+use RiseTechApps\FormRequest\Http\Requests\FormAccessRequest;
 use RiseTechApps\FormRequest\Http\Requests\StoreFormRequest;
 use RiseTechApps\FormRequest\Http\Requests\UpdateFormRequest;
 use RiseTechApps\FormRequest\Http\Resources\FormRequestResource;
 use RiseTechApps\FormRequest\FormDefinitions\FormDefinition;
 use RiseTechApps\FormRequest\Services\FormManager;
+use RiseTechApps\FormRequest\Services\FormSchema;
+use RiseTechApps\FormRequest\Support\ErrorReporter;
+use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
 /**
@@ -28,10 +34,10 @@ class FormController extends Controller
     /**
      * Lista os formulários armazenados com paginação opcional e metadados do registro.
      */
-    public function index(Request $request): JsonResponse
+    public function index(FormAccessRequest $request): JsonResponse
     {
         try {
-            $perPage = (int)$request->query('per_page', 15);
+            $perPage = (int) $request->query('per_page', 15);
             $filters = array_filter([
                 'form' => $request->query('form'),
             ]);
@@ -39,9 +45,23 @@ class FormController extends Controller
             $result = $this->forms->list($perPage, $filters);
 
             $data = FormRequestResource::collection($result);
+            $extra = [];
+
+            // O envelope leva só os itens em data; sem meta o cliente não
+            // saberia o total nem quantas páginas existem.
+            if ($result instanceof LengthAwarePaginator) {
+                $extra['meta'] = [
+                    'current_page' => $result->currentPage(),
+                    'last_page' => $result->lastPage(),
+                    'per_page' => $result->perPage(),
+                    'total' => $result->total(),
+                    'from' => $result->firstItem(),
+                    'to' => $result->lastItem(),
+                ];
+            }
 
             if ($request->boolean('include_configured')) {
-                $configured = collect($this->forms->configured())
+                $extra['configured'] = collect($this->forms->configured())
                     ->map(fn(FormDefinition $definition) => [
                         'form' => $definition->name(),
                         'rules' => $definition->rules(),
@@ -49,18 +69,13 @@ class FormController extends Controller
                         'metadata' => $definition->metadata(),
                     ])
                     ->values();
-
-                $data->additional(['configured' => $configured]);
             }
 
-            logglyInfo()->withRequest($request)->log("Successfully loaded datatable");
-
-            return response()->jsonSuccess($data);
+            return $this->success($data, $extra);
         } catch (Throwable $exception) {
+            $this->report($exception, $request, 'Error loading datatable');
 
-            logglyError()->exception($exception)->withRequest($request)->log("Error loading datatable");
-
-            return response()->jsonGone("Error loading datatable");
+            return $this->gone('Error loading datatable');
         }
     }
 
@@ -72,39 +87,30 @@ class FormController extends Controller
         try {
             $form = $this->forms->create($request->validated());
 
-            logglyInfo()->withRequest($request)->performedOn($form)->log("Success when registering registration");
-
-            return response()->jsonSuccess(FormRequestResource::make($form));
+            return $this->success(FormRequestResource::make($form));
         } catch (Throwable $exception) {
+            $this->report($exception, $request, 'Error by registering registration');
 
-            logglyError()->exception($exception)->withRequest($request)->performedOn(self::class)
-                ->withTags(['action' => 'store'])->log("Error by registering registration");
-
-            return response()->jsonGone("Error by registering registration");
+            return $this->gone('Error by registering registration');
         }
     }
 
     /**
      * Exibe uma definição de formulário específica.
      */
-    public function show(Request $request): JsonResponse
+    public function show(FormAccessRequest $request): JsonResponse
     {
         try {
-            $form = $this->forms->findOrFail((string)$request->route('id'));
+            $form = $this->forms->findOrFail((string) $request->route('id'));
             $data = FormRequestResource::make($form);
 
-            logglyInfo()->withRequest($request)->performedOn($form)->log("Success when loading the record for viewing");
-
-            return response()->jsonSuccess($data);
-        } catch (ModelNotFoundException $exception) {
-            logglyError()->exception($exception)->withRequest($request)->log("Record not found for viewing");
-
-            return response()->jsonNotFound("Form request not found");
+            return $this->success($data);
+        } catch (ModelNotFoundException) {
+            return $this->notFound('Form request not found');
         } catch (Throwable $exception) {
+            $this->report($exception, $request, 'Error when loading the record to be viewed');
 
-            logglyError()->exception($exception)->withRequest($request)->log("Error when loading the record to be viewed");
-
-            return response()->jsonGone("Error when loading the record to be viewed");
+            return $this->gone('Error when loading the record to be viewed');
         }
     }
 
@@ -113,50 +119,115 @@ class FormController extends Controller
      */
     public function update(UpdateFormRequest $request): JsonResponse
     {
-
         try {
-            $form = $this->forms->findOrFail((string)$request->route('id'));
+            $form = $this->forms->findOrFail((string) $request->route('id'));
             $form = $this->forms->update($form, $request->validated());
 
-            logglyInfo()->withRequest($request)->performedOn($form)->log("Success by updating the registration");
-
-            return response()->jsonSuccess(FormRequestResource::make($form->refresh()));
-
-        } catch (ModelNotFoundException $exception) {
-            logglyError()->exception($exception)->withRequest($request)->log("Record not found for update");
-
-            return response()->jsonNotFound("Form request not found");
+            return $this->success(FormRequestResource::make($form->refresh()));
+        } catch (ModelNotFoundException) {
+            return $this->notFound('Form request not found');
         } catch (Throwable $exception) {
+            $this->report($exception, $request, 'Error update the registration');
 
-            logglyError()->exception($exception)->withRequest($request)->log("Error update the registration");
-
-            return response()->jsonGone("Error update the registration");
+            return $this->gone('Error update the registration');
         }
     }
 
     /**
      * Remove a definição de formulário informada.
      */
-    public function destroy(Request $request): JsonResponse
+    public function destroy(FormAccessRequest $request): JsonResponse
     {
         try {
-            $form = $this->forms->findOrFail((string)$request->route('id'));
+            $form = $this->forms->findOrFail((string) $request->route('id'));
 
             $this->forms->delete($form);
 
-            logglyInfo()->withRequest($request)->performedOn($form)->log("Success by deleting the record");
-
-            return response()->jsonSuccess();
-
-        } catch (ModelNotFoundException $exception) {
-            logglyError()->exception($exception)->withRequest($request)->log("Record not found for deletion");
-
-            return response()->jsonNotFound("Form request not found");
+            return $this->success();
+        } catch (ModelNotFoundException) {
+            return $this->notFound('Form request not found');
         } catch (Throwable $exception) {
+            $this->report($exception, $request, 'Error by deleting the record');
 
-            logglyError()->exception($exception)->withRequest($request)->log("Error by deleting the record");
-
-            return response()->jsonGone("Error by deleting the record");
+            return $this->gone('Error by deleting the record');
         }
+    }
+
+    /**
+     * Descreve as regras de um formulário para validação no cliente.
+     */
+    public function schema(FormAccessRequest $request, FormSchema $schema): JsonResponse
+    {
+        try {
+            $data = $schema->build((string) $request->route('form'));
+
+            if ($data === null) {
+                return $this->notFound('Form request not found');
+            }
+
+            return $this->success($data);
+        } catch (Throwable $exception) {
+            $this->report($exception, $request, 'Error when loading the form schema');
+
+            return $this->gone('Error when loading the form schema');
+        }
+    }
+
+    /**
+     * Resposta de sucesso (200) no envelope da API.
+     *
+     * @param JsonResource|array<string, mixed>|null $data
+     * @param array<string, mixed> $extra Chaves de topo ao lado de data.
+     */
+    private function success(JsonResource|array|null $data = null, array $extra = []): JsonResponse
+    {
+        return $this->respond(true, Response::HTTP_OK, 'Operation completed successfully.', $data, $extra);
+    }
+
+    /**
+     * Registro inexistente (404).
+     */
+    private function notFound(string $message): JsonResponse
+    {
+        return $this->respond(false, Response::HTTP_NOT_FOUND, $message);
+    }
+
+    /**
+     * Falha inesperada (410), mantida do contrato original da API.
+     */
+    private function gone(string $message): JsonResponse
+    {
+        return $this->respond(false, Response::HTTP_GONE, $message);
+    }
+
+    /**
+     * Envelope {success, code, message, data} usado por todos os endpoints.
+     * data é omitido quando vazio.
+     *
+     * @param JsonResource|array<string, mixed>|null $data
+     * @param array<string, mixed> $extra
+     */
+    private function respond(bool $success, int $code, string $message, JsonResource|array|null $data = null, array $extra = []): JsonResponse
+    {
+        $payload = ['success' => $success, 'code' => $code, 'message' => $message];
+
+        if ($data instanceof JsonResource) {
+            $payload['data'] = $data->jsonSerialize();
+        } elseif (!empty($data)) {
+            $payload['data'] = $data;
+        }
+
+        return response()->json($payload + $extra, $code);
+    }
+
+    /**
+     * Registra uma falha inesperada com o contexto da requisição.
+     */
+    private function report(Throwable $exception, Request $request, string $message): void
+    {
+        ErrorReporter::report($exception, $message, [
+            'method' => $request->method(),
+            'url' => $request->fullUrl(),
+        ]);
     }
 }

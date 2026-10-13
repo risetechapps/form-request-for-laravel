@@ -26,4 +26,14 @@ return [
     'unique_json' => 'The :attribute has already been taken.',
     'exists_json' => 'The selected :attribute is invalid.',
     'required_if_any' => 'The :attribute field is required.',
+
+    /*
+     * Problems reported by RuleInspector when rules are stored through the
+     * API or checked by form-request:validate-rules. Not a rule name.
+     */
+    'inspector' => [
+        'invalid_definition' => 'Rules must be a string or a list of strings.',
+        'unknown_rule' => 'The rule ":rule" is not registered.',
+        'missing_parameters' => 'The rule ":rule" requires parameters.',
+    ],
 ];

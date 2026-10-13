@@ -2,19 +2,16 @@
 
 namespace RiseTechApps\FormRequest;
 
-
 use Illuminate\Support\Facades\Route;
 use RiseTechApps\FormRequest\FormDefinitions\FormRegistry;
 use RiseTechApps\FormRequest\Http\Controllers\FormController;
 use RiseTechApps\FormRequest\Validation\PresenceScopeRegistry;
-use RiseTechApps\FormRequest\ValidationRuleRepository;
 
 /**
  * Helper semelhante a uma facade que expõe funcionalidades principais do pacote de forma estática.
  */
 class FormRequest
 {
-
     /**
      * Registra as rotas de API do pacote usando um array de configuração opcional.
      *
@@ -22,7 +19,10 @@ class FormRequest
      */
     public static function routes(array $options = []): void
     {
-        Route::group($options, function () use ($options) {
+        Route::group($options, function () {
+
+            // Lookup por nome do formulário, não pelo id: é o que o front-end conhece.
+            Route::get('forms/{form}/schema', [FormController::class, 'schema'])->name('forms.schema');
 
             Route::apiResource('forms', FormController::class, [
                 'parameters' => [

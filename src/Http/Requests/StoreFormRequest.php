@@ -2,28 +2,16 @@
 
 namespace RiseTechApps\FormRequest\Http\Requests;
 
+use RiseTechApps\FormRequest\Http\Requests\Concerns\AuthorizesByRoute;
+use RiseTechApps\FormRequest\Http\Requests\Concerns\ValidatesStoredRules;
+
 /**
  * Form request responsável por validar a criação de registros de formulários dinâmicos.
  */
 class StoreFormRequest extends DynamicFormRequest
 {
-    /**
-     * Determina se o usuário autenticado pode criar uma nova definição de formulário.
-     */
-    public function authorize(): bool
-    {
-        $route = $this->route();
-
-        if ($route === null) {
-            return false;
-        }
-
-        $module = get_class($route->getController()) . '@' . $route->getActionMethod();
-
-        $user = $this->user();
-
-        return $user !== null && $user->hasPermission($module);
-    }
+    use AuthorizesByRoute;
+    use ValidatesStoredRules;
 
     /**
      * Utiliza a definição padrão de formulário para persistência.
