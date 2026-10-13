@@ -3,7 +3,7 @@
 Todas as alterações notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), e este projeto segue o [Versionamento Semântico](https://semver.org/lang/pt-BR/) (SemVer).
 
-## [Unreleased]
+## [3.0.0] - 2026-10-13
 
 ### Adicionado
 - `GET /forms` informa a paginação em `meta` (`current_page`, `last_page`, `per_page`, `total`, `from`, `to`), ao lado de `data`. Antes a resposta trazia só os itens da página.
