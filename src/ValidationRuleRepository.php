@@ -8,6 +8,9 @@ use RiseTechApps\FormRequest\FormDefinitions\FormDefinition;
 use RiseTechApps\FormRequest\FormDefinitions\FormRegistry;
 use RiseTechApps\FormRequest\Models\FormRequest as FormRequestModel;
 
+/**
+ * @phpstan-type ResolvedForm array{rules: array<string, mixed>, messages: array<string, string>}
+ */
 class ValidationRuleRepository
 {
     private const string CACHE_KEY_PREFIX = 'form-request:';
@@ -33,6 +36,9 @@ class ValidationRuleRepository
 
     /**
      * Resolve regras de validação considerando banco, config, cache e parâmetros dinâmicos.
+     *
+     * @param array<string, mixed> $parameter
+     * @return ResolvedForm
      */
     public function getRules(string $name, array $parameter = []): array
     {
@@ -83,20 +89,42 @@ class ValidationRuleRepository
      * contexto é preservado — 'exists:tabela,id' mantém a coluna id, e
      * 'regraCustomizada:id' entrega 'id' ao validador, como fazem as regras
      * nativas que referenciam outro campo (same:password, gt:idade).
+     *
+     * @param array<string, mixed> $rules
+     * @param array<string, mixed> $parameters
+     * @return array<string, mixed>
      */
     private function resolveRuleParameters(array $rules, array $parameters): array
     {
-        return array_map(function ($rule) use ($parameters) {
-            if (!is_string($rule)) {
-                return $rule;
+        return $this->mapRuleSegments(
+            $rules,
+            fn(string $segment): string => $this->resolveSegmentParameters($segment, $parameters)
+        );
+    }
+
+    /**
+     * Aplica o callback a cada segmento "regra:parametros" de cada campo.
+     *
+     * Aceita os dois formatos do Laravel: string separada por '|' e array,
+     * em que cada elemento string é um segmento. Objetos de regra (Rule::*,
+     * closures) são devolvidos intactos.
+     *
+     * @param array<string, mixed> $rules
+     * @param callable(string): string $callback
+     * @return array<string, mixed>
+     */
+    private function mapRuleSegments(array $rules, callable $callback): array
+    {
+        return array_map(function ($rule) use ($callback) {
+            if (is_string($rule)) {
+                return implode('|', array_map($callback, explode('|', $rule)));
             }
 
-            $segments = array_map(
-                fn(string $segment): string => $this->resolveSegmentParameters($segment, $parameters),
-                explode('|', $rule)
-            );
+            if (is_array($rule)) {
+                return array_map(fn($segment) => is_string($segment) ? $callback($segment) : $segment, $rule);
+            }
 
-            return implode('|', $segments);
+            return $rule;
         }, $rules);
     }
 
@@ -133,43 +161,38 @@ class ValidationRuleRepository
 
     /**
      * Ajusta regras unique nativas para update.
+     *
+     * @param array<string, mixed> $rules
+     * @return array<string, mixed>
      */
     private function setIdUpdate(mixed $id, array $rules): array
     {
-        return array_map(function ($rule) use ($id) {
-            if (!is_string($rule)) {
-                return $rule;
+        return $this->mapRuleSegments($rules, function (string $part) use ($id): string {
+            $part = trim($part);
+
+            if (!str_starts_with($part, 'unique:')) {
+                return $part;
             }
 
-            $parts = array_map(trim(...), explode('|', $rule));
+            $segments = explode(',', $part);
 
-            foreach ($parts as &$part) {
-                if (!str_starts_with($part, 'unique:')) {
-                    continue;
-                }
-
-                $segments = explode(',', $part);
-
-                // Um except explícito é preservado, inclusive a interpolação
-                // nativa do Laravel: unique:tabela,coluna,[id].
-                if (isset($segments[2]) && $segments[2] !== '') {
-                    continue;
-                }
-
-                // Coluna omitida (unique:tabela): sem preencher a posição 1 o
-                // id cairia nela e viraria o nome da coluna. 'NULL' é o literal
-                // que faz o Laravel voltar a usar o nome do atributo.
-                if (!isset($segments[1]) || $segments[1] === '') {
-                    $segments[1] = 'NULL';
-                }
-
-                $segments[2] = (string) $id;
-
-                $part = implode(',', $segments);
+            // Um except explícito é preservado, inclusive a interpolação
+            // nativa do Laravel: unique:tabela,coluna,[id].
+            if (isset($segments[2]) && $segments[2] !== '') {
+                return $part;
             }
 
-            return implode('|', $parts);
-        }, $rules);
+            // Coluna omitida (unique:tabela): sem preencher a posição 1 o
+            // id cairia nela e viraria o nome da coluna. 'NULL' é o literal
+            // que faz o Laravel voltar a usar o nome do atributo.
+            if (!isset($segments[1]) || $segments[1] === '') {
+                $segments[1] = 'NULL';
+            }
+
+            $segments[2] = (string) $id;
+
+            return implode(',', $segments);
+        });
     }
 
     /**
@@ -179,6 +202,8 @@ class ValidationRuleRepository
      * validação não entra na consulta: ele é dado de interpolação das regras,
      * aplicado adiante por setIdUpdate() e resolveRuleParameters(), e suas
      * chaves não correspondem a colunas de form_requests.
+     *
+     * @return ResolvedForm
      */
     private function fetchRulesFromDatabase(string $name): array
     {
@@ -202,6 +227,8 @@ class ValidationRuleRepository
 
     /**
      * Busca regras na configuração.
+     *
+     * @return ResolvedForm
      */
     private function fetchRulesFromConfiguration(string $name): array
     {
@@ -223,6 +250,9 @@ class ValidationRuleRepository
 
     /**
      * Gera mensagens padrão a partir das regras.
+     *
+     * @param array<string, mixed> $rules
+     * @return array<string, string>
      */
     protected function generateMessages(array $rules): array
     {
@@ -237,6 +267,8 @@ class ValidationRuleRepository
 
     /**
      * Normaliza regras para geração de mensagens.
+     *
+     * @return array<string, string>
      */
     protected function extractRules(string $field, mixed $rulesDefinition): array
     {
@@ -262,8 +294,11 @@ class ValidationRuleRepository
 
     /**
      * Cache helpers
+     *
+     * @param \Closure(): ResolvedForm $callback
+     * @return ResolvedForm
      */
-    private function remember(string $name, callable $callback): array
+    private function remember(string $name, \Closure $callback): array
     {
         if (!$this->cacheEnabled) {
             return $callback();
@@ -275,6 +310,22 @@ class ValidationRuleRepository
     private function cacheKey(string $name): string
     {
         return self::CACHE_KEY_PREFIX . $name;
+    }
+
+    /**
+     * Indica se o cache de regras está habilitado (rules.cache.enabled).
+     */
+    public function cacheEnabled(): bool
+    {
+        return $this->cacheEnabled;
+    }
+
+    /**
+     * Indica se as regras do formulário estão em cache.
+     */
+    public function isCached(string $name): bool
+    {
+        return $this->cacheEnabled && $this->cache->has($this->cacheKey($name));
     }
 
     /**

@@ -3,9 +3,8 @@
 namespace RiseTechApps\FormRequest\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Lang;
-use Illuminate\Support\Str;
 use RiseTechApps\FormRequest\Traits\HasFormValidation\HasFormValidation;
+use RiseTechApps\FormRequest\Validation\MessageTranslator;
 use RiseTechApps\FormRequest\ValidationRuleRepository;
 
 /**
@@ -60,7 +59,7 @@ abstract class DynamicFormRequest extends FormRequest
     /**
      * Resolve as mensagens de validação traduzidas para o request.
      *
-     * @return array<string, string>
+     * @return array<string, string|array<string, string>>
      */
     #[\Override]
     public function messages(): array
@@ -71,50 +70,16 @@ abstract class DynamicFormRequest extends FormRequest
     }
 
     /**
-     * Traduz as chaves de mensagem usando textos da aplicação ou os padrões do pacote.
+     * Traduz as chaves de mensagem usando textos da aplicação ou os padrões do
+     * pacote. Sobrescreva para trocar a estratégia de um request específico.
      *
-     * As chaves recebidas seguem o formato "campo.regra" gerado por
-     * ValidationRuleRepository::extractRules(). A ordem reproduz a precedência do
-     * Laravel: validation.custom.{campo}.{regra}, validation.{regra} e, por último,
-     * a mensagem padrão do pacote em form-request::validation.{regra}.
-     *
+     * @see MessageTranslator
      * @param array<string, string> $messages
-     * @return array<string, string>
+     * @return array<string, string|array<string, string>>
      */
     protected function translateMessages(array $messages): array
     {
-        return array_map(function (string $value) {
-            [$attribute, $rule] = array_pad(explode('.', $value, 2), 2, null);
-
-            if ($attribute === null || $attribute === '' || $rule === null || $rule === '') {
-                return $value;
-            }
-
-            $customKey = sprintf('validation.custom.%s.%s', $attribute, $rule);
-            if (Lang::has($customKey)) {
-                return __($customKey);
-            }
-
-            $readableAttribute = Str::of($attribute)
-                ->replace('_', ' ')
-                ->lower()
-                ->ucfirst()
-                ->toString();
-
-            $fallbackKey = 'validation.' . $rule;
-            if (Lang::has($fallbackKey)) {
-                return __($fallbackKey, ['attribute' => $readableAttribute]);
-            }
-
-            // Padrão do pacote: chave plana por nome de regra, no namespace
-            // registrado em FormRequestServiceProvider::boot().
-            $packageKey = 'form-request::validation.' . $rule;
-            if (Lang::has($packageKey)) {
-                return __($packageKey, ['attribute' => $readableAttribute]);
-            }
-
-            return $value;
-        }, $messages);
+        return app(MessageTranslator::class)->translate($messages);
     }
 
     /**
