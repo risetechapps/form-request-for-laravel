@@ -3,8 +3,7 @@
 namespace RiseTechApps\FormRequest\Commands;
 
 use Illuminate\Console\Command;
-use RiseTechApps\FormRequest\FormDefinitions\FormRegistry;
-use RiseTechApps\FormRequest\Models\FormRequest as FormRequestModel;
+use RiseTechApps\FormRequest\Catalog\FormCatalog;
 use RiseTechApps\FormRequest\ValidationRuleRepository;
 
 class ClearCacheCommand extends Command
@@ -15,18 +14,22 @@ class ClearCacheCommand extends Command
 
     protected $description = 'Limpar o cache de regras de validação';
 
-    public function handle(
-        ValidationRuleRepository $repository,
-        FormRegistry $registry,
-        FormRequestModel $formRequestModel
-    ): int {
+    public function handle(ValidationRuleRepository $repository, FormCatalog $catalog): int
+    {
         $formName = $this->argument('form');
+
+        // Sem alvo continua sendo erro de uso, mesmo com o cache desligado.
+        if (!$repository->cacheEnabled() && ($formName || $this->option('all'))) {
+            $this->warn('⚠️  Cache desabilitado (rules.cache.enabled). Nada a limpar.');
+
+            return self::SUCCESS;
+        }
 
         if ($formName) {
             $repository->clearCache($formName);
             $this->info("✅ Cache limpo para o formulário '{$formName}'.");
         } elseif ($this->option('all')) {
-            $this->clearAllCache($repository, $registry, $formRequestModel);
+            $this->clearAllCache($repository, $catalog);
         } else {
             $this->warn('⚠️  Use um nome de formulário ou a opção --all');
             $this->line('');
@@ -39,25 +42,17 @@ class ClearCacheCommand extends Command
         return 0;
     }
 
-    private function clearAllCache(
-        ValidationRuleRepository $repository,
-        FormRegistry $registry,
-        FormRequestModel $formRequestModel
-    ): void {
+    private function clearAllCache(ValidationRuleRepository $repository, FormCatalog $catalog): void
+    {
         $this->info('🧹 Limpando cache de todos os formulários...');
 
-        // Coleta os nomes de formulários do banco e da configuração e invalida
-        // apenas as chaves do pacote — nunca o cache inteiro da aplicação.
-        $names = collect($formRequestModel->newQuery()->pluck('form'))
-            ->merge(array_keys($registry->all()))
-            ->filter()
-            ->unique()
-            ->values();
+        // Invalida apenas as chaves do pacote, nunca o cache inteiro da aplicação.
+        $names = array_keys($catalog->entries());
 
         foreach ($names as $name) {
             $repository->clearCache($name);
         }
 
-        $this->info("✅ Cache limpo para {$names->count()} formulário(s).");
+        $this->info('✅ Cache limpo para ' . count($names) . ' formulário(s).');
     }
 }

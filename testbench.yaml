@@ -1,0 +1,6 @@
+providers:
+  - RiseTechApps\FormRequest\FormRequestServiceProvider
+
+env:
+  - DB_CONNECTION=sqlite
+  - CACHE_STORE=file

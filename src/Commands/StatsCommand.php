@@ -3,9 +3,10 @@
 namespace RiseTechApps\FormRequest\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Cache;
-use RiseTechApps\FormRequest\FormDefinitions\FormRegistry;
-use RiseTechApps\FormRequest\Models\FormRequest as FormRequestModel;
+use RiseTechApps\FormRequest\Catalog\CatalogEntry;
+use RiseTechApps\FormRequest\Catalog\FormCatalog;
+use RiseTechApps\FormRequest\RulesRegistry;
+use RiseTechApps\FormRequest\ValidationRuleRepository;
 
 class StatsCommand extends Command
 {
@@ -14,125 +15,91 @@ class StatsCommand extends Command
 
     protected $description = 'Mostrar estatísticas de uso do form-request';
 
-    public function handle(
-        FormRegistry $registry,
-        FormRequestModel $formRequestModel
-    ): int {
+    public function handle(FormCatalog $catalog, ValidationRuleRepository $repository, RulesRegistry $rules): int
+    {
+        $entries = $catalog->entries();
+
         $this->info('═══════════════════════════════════════════════════');
         $this->info('  ESTATÍSTICAS DO FORM REQUEST');
         $this->info('═══════════════════════════════════════════════════');
         $this->line('');
 
-        // Contagem de formulários
-        $dbCount = $formRequestModel->newQuery()->count();
-        $configCount = count($registry->all());
+        $stored = count(array_filter($entries, fn(CatalogEntry $entry) => $entry->stored !== null));
+        $configured = count(array_filter($entries, fn(CatalogEntry $entry) => $entry->configured !== null));
+        $overrides = count(array_filter($entries, fn(CatalogEntry $entry) => $entry->overridesConfig()));
 
         $this->info('📊 Resumo:');
-        $this->line("  • Formulários no banco: {$dbCount}");
-        $this->line("  • Formulários em código: {$configCount}");
-        $this->line("  • Total: " . ($dbCount + $configCount));
+        $this->line("  • Formulários no banco: {$stored}");
+        $this->line("  • Formulários em código: {$configured}");
+        $this->line("  • Do código sobrescritos pelo banco: {$overrides}");
+        // Um formulário nas duas origens conta uma vez.
+        $this->line('  • Total: ' . count($entries));
         $this->line('');
 
-        // Estatísticas de cache
-        $this->displayCacheStats();
+        $this->displayCacheStats($repository, $entries);
 
-        // Detalhes
         if ($this->option('detailed')) {
-            $this->displayDetailedStats($formRequestModel, $registry);
+            $this->displayDetailedStats($entries, $rules);
         }
 
-        return 0;
+        return self::SUCCESS;
     }
 
-    private function displayCacheStats(): void
+    /**
+     * @param array<string, CatalogEntry> $entries
+     */
+    private function displayCacheStats(ValidationRuleRepository $repository, array $entries): void
     {
-        $this->info('💾 Cache:');
-
         $cacheConfig = config('rules.cache', []);
-        $enabled = ($cacheConfig['enabled'] ?? false) ? 'Sim' : 'Não';
-        $store = $cacheConfig['store'] ?? 'default';
-        $ttl = $cacheConfig['ttl'] ?? 300;
 
-        $this->line("  • Habilitado: {$enabled}");
-        $this->line("  • Store: {$store}");
-        $this->line("  • TTL: {$ttl}s");
+        $this->info('💾 Cache:');
+        $this->line('  • Habilitado: ' . ($repository->cacheEnabled() ? 'Sim' : 'Não'));
+        $this->line('  • Store: ' . ($cacheConfig['store'] ?? 'default'));
+        $this->line('  • TTL: ' . ($cacheConfig['ttl'] ?? 300) . 's');
 
-        // Tentar contar chaves de cache
-        try {
-            $cacheKeys = $this->getCacheKeys();
-            $this->line("  • Chaves em cache: " . count($cacheKeys));
-        } catch (\Exception) {
-            $this->line("  • Chaves em cache: Não foi possível determinar");
+        if ($repository->cacheEnabled()) {
+            $cached = count(array_filter($entries, fn(CatalogEntry $entry) => $repository->isCached($entry->name)));
+            $this->line("  • Formulários em cache: {$cached} de " . count($entries));
         }
 
         $this->line('');
     }
 
-    private function displayDetailedStats(
-        FormRequestModel $formRequestModel,
-        FormRegistry $registry
-    ): void {
+    /**
+     * @param array<string, CatalogEntry> $entries
+     */
+    private function displayDetailedStats(array $entries, RulesRegistry $rules): void
+    {
         $this->info('═══════════════════════════════════════════════════');
         $this->info('  DETALHES');
         $this->info('═══════════════════════════════════════════════════');
         $this->line('');
 
-        // Formulários do banco
-        if ($formRequestModel->newQuery()->count() > 0) {
-            $this->info('📁 Formulários do Banco:');
-            foreach ($formRequestModel->all() as $form) {
-                $rulesCount = count($form->rules ?? []);
-                $messagesCount = count($form->messages ?? []);
-                $updated = $form->updated_at?->format('d/m/Y H:i') ?? 'N/A';
-                $this->line("  • {$form->form}");
-                $this->line("    Regras: {$rulesCount} | Mensagens: {$messagesCount} | Atualizado: {$updated}");
+        if ($entries !== []) {
+            $this->info('📁 Formulários:');
+
+            foreach ($entries as $entry) {
+                $updated = $entry->source() === CatalogEntry::DATABASE
+                    ? ' | Atualizado: ' . ($entry->stored?->updated_at?->format('d/m/Y H:i') ?? 'N/A')
+                    : '';
+
+                $this->line("  • {$entry->name} ({$entry->sourceLabel()})");
+                $this->line('    Campos: ' . count($entry->rules()) . ' | Mensagens: ' . count($entry->messages()) . $updated);
             }
+
             $this->line('');
         }
 
-        // Formulários da config
-        $configForms = $registry->all();
-        if (count($configForms) > 0) {
-            $this->info('⚙️  Formulários em Código:');
-            foreach ($configForms as $name => $definition) {
-                $rulesCount = count($definition->rules());
-                $messagesCount = count($definition->messages());
-                $this->line("  • {$name}");
-                $this->line("    Regras: {$rulesCount} | Mensagens: {$messagesCount}");
-            }
-            $this->line('');
+        // Lista real: as do pacote, as de RulesContract e as de rules.validators.
+        $validators = $rules->allValidators();
+        ksort($validators);
+
+        $this->info('🔧 Validadores customizados (' . count($validators) . '):');
+
+        foreach ($validators as $rule => $class) {
+            $this->line("  • {$rule} - {$class}");
         }
 
-        // Regras customizadas disponíveis
-        $this->info('🔧 Validadores Customizados:');
-        $this->line('  • cpf - Valida CPF brasileiro');
-        $this->line('  • cnpj - Valida CNPJ brasileiro');
-        $this->line('  • uniqueJson - Valida unicidade em JSON');
-        $this->line('  • required_if_any - Requerido se qualquer campo for preenchido');
         $this->line('');
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    private function getCacheKeys(): array
-    {
-        // Tentar obter chaves do cache (método varia por driver)
-        $keys = [];
-
-        try {
-            // Verificar se é possível listar chaves (Redis, por exemplo)
-            $store = Cache::store(config('rules.cache.store'));
-
-            // Alguns drivers suportam getAllKeys ou similar
-            if (method_exists($store->getStore(), 'getAllKeys')) {
-                $allKeys = $store->getStore()->getAllKeys();
-                $keys = array_filter($allKeys, fn($k) => str_starts_with((string) $k, 'form-request:'));
-            }
-        } catch (\Exception) {
-            // Silenciar erro - nem todos os drivers suportam listagem
-        }
-
-        return $keys;
     }
 }

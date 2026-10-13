@@ -3,81 +3,69 @@
 namespace RiseTechApps\FormRequest\Commands;
 
 use Illuminate\Console\Command;
-use RiseTechApps\FormRequest\FormDefinitions\FormRegistry;
-use RiseTechApps\FormRequest\Models\FormRequest as FormRequestModel;
+use RiseTechApps\FormRequest\Catalog\FormCatalog;
 use RiseTechApps\FormRequest\ValidationRuleRepository;
+use Throwable;
 
 class WarmCacheCommand extends Command
 {
     protected $signature = 'form-request:warm-cache
                             {--form= : Aquecer cache apenas de um formulário específico}';
 
-    protected $description = 'Pré-carregar cache de regras de validação';
+    protected $description = 'Pré-carregar (ou recarregar) o cache de regras de validação';
 
-    public function handle(
-        ValidationRuleRepository $repository,
-        FormRegistry $registry,
-        FormRequestModel $formRequestModel
-    ): int {
-        $filterForm = $this->option('form');
+    public function handle(ValidationRuleRepository $repository, FormCatalog $catalog): int
+    {
+        if (!$repository->cacheEnabled()) {
+            // Não é falha: deploys que sempre rodam o comando não devem quebrar.
+            $this->warn('⚠️  Cache desabilitado (rules.cache.enabled). Nada a aquecer.');
+
+            return self::SUCCESS;
+        }
+
+        $filterForm = $this->option('form') ?: null;
+        $entries = $catalog->entries($filterForm);
+
+        if ($entries === []) {
+            $this->warn($filterForm !== null
+                ? "⚠️  Formulário '{$filterForm}' não encontrado no banco nem no código."
+                : '⚠️  Nenhum formulário encontrado para aquecer cache.');
+
+            return self::FAILURE;
+        }
 
         $this->info('🔥 Aquecendo cache de regras...');
         $this->line('');
 
         $warmed = 0;
-        $forms = [];
+        $failed = 0;
 
-        // Coletar formulários do banco
-        $query = $formRequestModel->newQuery();
-        if ($filterForm) {
-            $query->where('form', $filterForm);
-        }
-
-        foreach ($query->get() as $form) {
-            $forms[] = [
-                'name' => $form->form,
-                'source' => 'database',
-            ];
-        }
-
-        // Coletar formulários da config (se não filtrado)
-        if (!$filterForm) {
-            foreach ($registry->all() as $name => $definition) {
-                // Verificar se já não foi adicionado do banco
-                $exists = array_filter($forms, fn($f) => $f['name'] === $name);
-                if (empty($exists)) {
-                    $forms[] = [
-                        'name' => $name,
-                        'source' => 'config',
-                    ];
-                }
-            }
-        }
-
-        if (empty($forms)) {
-            $this->warn('⚠️  Nenhum formulário encontrado para aquecer cache.');
-            return 1;
-        }
-
-        // Aquecer cache
-        foreach ($forms as $form) {
+        foreach ($entries as $entry) {
             $start = microtime(true);
 
             try {
-                $repository->getRules($form['name']);
+                // Sem limpar antes, o remember devolveria a entrada antiga.
+                $repository->clearCache($entry->name);
+                $repository->getRules($entry->name);
+
                 $time = round((microtime(true) - $start) * 1000, 2);
-                $this->info("  ✅ {$form['name']} ({$form['source']}) - {$time}ms");
+                $this->info("  ✅ {$entry->name} ({$entry->sourceLabel()}) - {$time}ms");
                 $warmed++;
-            } catch (\Exception $e) {
-                $this->error("  ❌ {$form['name']}: {$e->getMessage()}");
+            } catch (Throwable $e) {
+                $this->error("  ❌ {$entry->name}: {$e->getMessage()}");
+                $failed++;
             }
         }
 
         $this->line('');
-        $this->info('═══════════════════════════════════════════════════');
         $this->info("✅ Cache aquecido: {$warmed} formulário(s)");
-        $this->info('═══════════════════════════════════════════════════');
 
-        return 0;
+        if ($failed > 0) {
+            $this->error("❌ Falhas: {$failed} formulário(s)");
+
+            return self::FAILURE;
+        }
+
+        return self::SUCCESS;
     }
 }
