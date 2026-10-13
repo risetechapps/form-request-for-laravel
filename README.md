@@ -51,36 +51,51 @@ php artisan form-request:seed
 
 ## 📋 Comandos Artisan
 
+Os comandos enxergam os formulários do banco e os registrados em código numa lista só.
+Quando o mesmo nome existe nos dois, vale o do banco (como na validação), e a origem
+aparece como `database (sobrescreve config)`.
+
 ### Gerenciamento de Regras
 | Comando | Descrição |
 |---------|-----------|
-| `php artisan form-request:list` | Lista todas as regras em formato de tabela |
-| `php artisan form-request:list --database` | Lista apenas regras do banco |
-| `php artisan form-request:list --config` | Lista apenas regras em código |
+| `php artisan form-request:list` | Lista formulários, campos e regras, com a origem de cada formulário |
+| `php artisan form-request:list -m` | Mostra também a mensagem de cada regra (personalizadas em amarelo) |
+| `php artisan form-request:list --missing` | Só as regras sem mensagem personalizada, com a mensagem padrão que vale hoje. Sai com código 1 se houver alguma, para usar na CI. Ignora o formulário interno `form_request`, a menos que seja pedido com `--form` |
+| `php artisan form-request:list --database` | Só formulários cujas regras vêm do banco |
+| `php artisan form-request:list --config` | Só formulários cujas regras vêm do código |
 | `php artisan form-request:list --form=clients` | Filtra por formulário específico |
-| `php artisan form-request:list --field=email` | Filtra por campo específico |
+| `php artisan form-request:list --field=email` | Filtra por campo (nome exato, ou padrão como `itens.*`) |
+| `php artisan form-request:list --json` | Mesma listagem em JSON, para scripts |
 
 ### Exportar/Importar
 ```bash
-# Exportar todas as regras
+# Exportar para um arquivo (caminho relativo parte da raiz da aplicação)
 php artisan form-request:export --file=regras.json
 
-# Exportar apenas um formulário
-php artisan form-request:export --file=clients.json --form=clients
+# Sem --file, o JSON sai no stdout
+php artisan form-request:export --form=clients | jq '.clients.rules'
 
 # Importar regras
-php artisan form-request:import --file=regras.json
+php artisan form-request:import regras.json
+
+# Ver o que seria criado/atualizado, sem gravar
+php artisan form-request:import regras.json --dry-run
 
 # Importar e sobrescrever existentes
-php artisan form-request:import --file=regras.json --force
+php artisan form-request:import regras.json --force
 ```
+
+O `import` faz as mesmas checagens da API (`POST /forms`): se algum formulário do arquivo
+tiver regra desconhecida ou formato inválido, nada é gravado e o comando sai com código 1.
+A gravação acontece numa transação. Arquivos gerados pelo `export` de versões anteriores
+continuam aceitos.
 
 ### Cache
 ```bash
-# Pré-carregar cache de todos os formulários
+# Recarregar o cache de todos os formulários (substitui entradas antigas)
 php artisan form-request:warm-cache
 
-# Pré-carregar cache de um formulário específico
+# Recarregar o cache de um formulário específico
 php artisan form-request:warm-cache --form=clients
 
 # Limpar cache de um formulário
@@ -90,15 +105,18 @@ php artisan form-request:clear-cache clients
 php artisan form-request:clear-cache --all
 ```
 
+Com `rules.cache.enabled` desligado, `warm-cache` e `clear-cache` apenas avisam e saem com
+código 0. `warm-cache` sai com código 1 se algum formulário falhar.
+
 ### Validação e Estatísticas
 ```bash
-# Validar sintaxe das regras
+# Validar as regras do banco e do código (código de saída 1 se houver erro, útil na CI)
 php artisan form-request:validate-rules
 
-# Estatísticas básicas
+# Estatísticas: formulários por origem e quantos estão em cache
 php artisan form-request:stats
 
-# Estatísticas detalhadas
+# Detalhes por formulário e todos os validadores registrados
 php artisan form-request:stats --detailed
 ```
 
@@ -343,6 +361,97 @@ Endpoints disponíveis:
 - `GET /api/admin/forms/{id}` - Ver formulário
 - `PUT /api/admin/forms/{id}` - Atualizar formulário
 - `DELETE /api/admin/forms/{id}` - Remover formulário
+- `GET /api/admin/forms/{form}/schema` - Regras de um formulário para validação no cliente
+
+#### Permissões
+
+Todas as rotas exigem um usuário autenticado cujo model tenha o método
+`hasPermission(string $module): bool`. O módulo verificado é a ação da rota, no
+formato `Controller@método`:
+
+| Rota | Permissão |
+|------|-----------|
+| `GET /forms` | `RiseTechApps\FormRequest\Http\Controllers\FormController@index` |
+| `POST /forms` | `...\FormController@store` |
+| `GET /forms/{id}` | `...\FormController@show` |
+| `PUT /forms/{id}` | `...\FormController@update` |
+| `DELETE /forms/{id}` | `...\FormController@destroy` |
+| `GET /forms/{form}/schema` | `...\FormController@schema` |
+
+Sem usuário, sem a permissão ou sem `hasPermission()` no model, a resposta é 403
+`{"success": false, "message": "Permission denied."}`. Como o schema costuma ser lido
+pelo front-end de quem preenche o formulário, a permissão `@schema` normalmente vai para
+esses usuários também, e não só para quem administra as regras.
+
+As respostas seguem o envelope `{success, code, message, data}`: 200 em caso de
+sucesso, 404 para formulário inexistente e 410 para falha inesperada, que é registrada
+no canal `rules.log_channel`.
+
+`GET /api/forms` pagina com `per_page` (padrão 15) e `page`, e informa a paginação em
+`meta`, ao lado de `data`. Com `per_page=0` a lista vem inteira, sem `meta`:
+
+```json
+{
+    "success": true,
+    "code": 200,
+    "message": "Operation completed successfully.",
+    "data": [...],
+    "meta": {"current_page": 2, "last_page": 4, "per_page": 5, "total": 20, "from": 6, "to": 10}
+}
+```
+
+`GET /api/forms?include_configured=1` acrescenta, ao lado de `data`, a chave
+`configured` com os formulários registrados em código.
+
+#### Regras validadas antes de salvar
+
+`POST` e `PUT` recusam com 422 regras que o Validator não conhece, em vez de
+gravá-las e falhar só quando alguém enviar o formulário. São reconhecidas as regras
+nativas do Laravel, os validadores do pacote e os registrados pela aplicação
+(`config('rules.validators')`, `RulesContract` ou `Validator::extend`). Os erros
+saem por campo:
+
+```json
+{
+    "success": false,
+    "errors": {
+        "rules.name": ["The rule \"requird\" is not registered."],
+        "rules.email": ["The rule \"unique\" requires parameters."]
+    }
+}
+```
+
+O comando `form-request:validate-rules` usa a mesma verificação.
+
+#### Schema para o front-end
+
+`GET /forms/{form}/schema` descreve o formulário, do banco ou do código, num formato
+pronto para validação no cliente:
+
+```json
+{
+    "form": "clients",
+    "fields": {
+        "email": {
+            "required": true,
+            "rules": [
+                {"rule": "required", "parameters": [], "server_only": false, "message": "The Email field is required."},
+                {"rule": "max", "parameters": ["255"], "server_only": false, "message": {"string": "...", "numeric": "..."}},
+                {"rule": "unique", "parameters": [], "server_only": true, "message": "The Email has already been taken."}
+            ]
+        }
+    }
+}
+```
+
+- Regras que consultam o banco (`unique`, `exists`, `uniqueJson`, `existsJson`) vêm com
+  `server_only: true` e sem parâmetros, que revelariam tabelas e colunas.
+- Objetos de regra sem forma textual (closures, `ValidationRule`) aparecem como
+  `{"rule": "custom", "server_only": true}`.
+- As mensagens são as mesmas do `DynamicFormRequest`. Placeholders como `:min` e, em
+  campos aninhados, `:attribute` ficam para o cliente preencher; regras de tamanho
+  trazem uma mensagem por tipo.
+- O schema é resolvido sem contexto: placeholders como `{tenant}` aparecem crus.
 
 ---
 
@@ -632,6 +741,11 @@ return [
         // 'authentications' => [\App\Validation\NotDeletedScope::class],
     ],
 
+    // Canal de log das falhas internas dos validadores (null = canal padrão)
+    // Uma falha interna (tabela inexistente, banco fora do ar) nega o valor
+    // e grava "Validator {regra} failed", com a regra também em context.rule.
+    'log_channel' => null,
+
     // Configuração de cache
     'cache' => [
         'enabled' => true,
@@ -679,12 +793,33 @@ totalmente customizado da aplicação tem precedência e é preservado.
 
 ---
 
-## 🧪 Testes
+## 🧪 Testes e qualidade
 
 ```bash
 composer install
-composer test
+composer test          # PHPUnit
+composer analyse       # PHPStan (Larastan), nível 6
+composer format        # Pint
+composer format-check  # Pint sem alterar arquivos, como no CI
 ```
+
+O CI roda os testes em PHP 8.3 e 8.4, com as versões mínimas e as mais recentes das
+dependências, além do PHPStan e do Pint.
+
+### Rodar os comandos sem uma aplicação
+
+O `testbench.yaml` sobe uma aplicação Laravel mínima com o pacote e um banco SQLite,
+para experimentar os comandos Artisan direto do repositório:
+
+```bash
+vendor/bin/testbench workbench:create-sqlite-db   # uma vez
+vendor/bin/testbench form-request:migrate
+vendor/bin/testbench form-request:import regras.json --dry-run
+vendor/bin/testbench form-request:list
+```
+
+O banco fica em `vendor/orchestra/testbench-core/laravel/database/database.sqlite` e é
+recriado com `workbench:drop-sqlite-db` seguido de `workbench:create-sqlite-db`.
 
 ---
 
