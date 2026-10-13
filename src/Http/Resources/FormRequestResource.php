@@ -7,11 +7,15 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * Resource de API que transforma formulários armazenados em arrays JSON.
+ *
+ * @mixin \RiseTechApps\FormRequest\Models\FormRequest
  */
 class FormRequestResource extends JsonResource
 {
     /**
      * Transforma o resource em um array.
+     *
+     * @return array<string, mixed>
      */
     #[\Override]
     public function toArray(Request $request): array

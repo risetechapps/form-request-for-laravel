@@ -5,7 +5,6 @@ namespace RiseTechApps\FormRequest\Traits\HasFormValidation;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Routing\ResponseFactory;
 use Illuminate\Support\Arr;
 
 trait HasFormValidation

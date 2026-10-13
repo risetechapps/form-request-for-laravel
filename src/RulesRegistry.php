@@ -7,7 +7,9 @@ use RiseTechApps\FormRequest\Services\Validator;
 
 class RulesRegistry
 {
-
+    /**
+     * @var array<int, class-string<RulesContract>>
+     */
     protected array $registeredClasses = [];
 
     public function register(string $className): void
@@ -18,6 +20,9 @@ class RulesRegistry
         }
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function allRules(): array
     {
         $all = [];
@@ -26,7 +31,8 @@ class RulesRegistry
             $all = array_merge($all, $class::Rules());
         }
 
-        return array_merge($all,
+        return array_merge(
+            $all,
             [
                 'form_request' => [
                     'form' => 'bail|required|min:3|unique:form_requests,form',
@@ -55,6 +61,9 @@ class RulesRegistry
         return $all;
     }
 
+    /**
+     * @return array<string, class-string>
+     */
     public function allValidators(): array
     {
         $all = [];

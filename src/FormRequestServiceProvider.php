@@ -92,7 +92,7 @@ class FormRequestServiceProvider extends ServiceProvider
 
         $this->app->singleton(Commands\MigrateCommand::class, fn($app) => new Commands\MigrateCommand($app['migrator'], $app['events']));
 
-        $this->app->singleton(FormRequest::class, fn() => new FormRequest);
+        $this->app->singleton(FormRequest::class, fn() => new FormRequest());
 
         // Accessor usado por FormRequestFacade; sem o alias a facade não resolve.
         $this->app->alias(FormRequest::class, 'form-request');
@@ -136,7 +136,7 @@ class FormRequestServiceProvider extends ServiceProvider
     private function registerConfiguredPresenceScopes(PresenceScopeRegistry $registry): void
     {
         foreach (config('rules.presence_scopes', []) as $table => $scopes) {
-            foreach ((array)$scopes as $scope) {
+            foreach ((array) $scopes as $scope) {
                 $registry->scope(
                     $table,
                     is_string($scope) ? $this->app->make($scope)(...) : $scope,

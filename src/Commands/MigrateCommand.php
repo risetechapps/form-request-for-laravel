@@ -42,10 +42,4 @@ class MigrateCommand extends CommandMigrate
 
         return __DIR__ . '/../../database/migrations';
     }
-
-    #[\Override]
-    public function handle(): void
-    {
-        parent::handle();
-    }
 }

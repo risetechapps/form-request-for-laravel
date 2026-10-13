@@ -14,8 +14,14 @@ class TraitOnlyRequest extends LaravelFormRequest
 
     public static string $id = '';
 
-    public function rules(): array { return []; }
-    public function authorize(): bool { return true; }
+    public function rules(): array
+    {
+        return [];
+    }
+    public function authorize(): bool
+    {
+        return true;
+    }
 
     protected function validationContext(): array
     {
@@ -28,8 +34,14 @@ class PlainTraitRequest extends LaravelFormRequest
 {
     use HasFormValidation;
 
-    public function rules(): array { return []; }
-    public function authorize(): bool { return true; }
+    public function rules(): array
+    {
+        return [];
+    }
+    public function authorize(): bool
+    {
+        return true;
+    }
 }
 
 class TraitContextTest extends TestCase

@@ -20,7 +20,7 @@ class FormRequestSeeder extends Seeder
                 continue;
             }
 
-            if(!FormRequest::where('form' , $key)->exists()){
+            if (!FormRequest::where('form', $key)->exists()) {
 
                 FormRequest::create([
                     'form' => $key,

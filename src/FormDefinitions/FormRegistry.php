@@ -18,6 +18,7 @@ class FormRegistry
      * Inicializa o registro com uma lista opcional de definições.
      *
      * @param array<string, array<string, mixed>|array<int, mixed>> $definitions
+     * @param array<string, array<string, string>> $messages
      */
     public function __construct(array $definitions = [], array $messages = [])
     {
@@ -41,7 +42,7 @@ class FormRegistry
      * Registra várias definições de formulário de uma só vez.
      *
      * @param array<string, mixed> $definitions
-     * @param array<string, array<string, string> $messages
+     * @param array<string, array<string, string>> $messages
      */
     public function registerMany(array $definitions, array $messages = []): void
     {
@@ -64,7 +65,7 @@ class FormRegistry
             }
 
             // Mescla mensagens do parâmetro $messages se existirem para este formulário
-            if (isset($messages[$formName]) && is_array($messages[$formName])) {
+            if (isset($messages[$formName])) {
                 $formMessages = array_merge($formMessages, $messages[$formName]);
             }
 

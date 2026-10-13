@@ -17,7 +17,7 @@ final class Modulo
         $weight = 2;
 
         for ($i = strlen($digits) - 1; $i >= 0; $i--) {
-            $product = (int)$digits[$i] * $weight;
+            $product = (int) $digits[$i] * $weight;
 
             if ($product > 9) {
                 $product = intdiv($product, 10) + ($product % 10);
@@ -41,7 +41,7 @@ final class Modulo
         $weight = 2;
 
         for ($i = strlen($digits) - 1; $i >= 0; $i--) {
-            $sum += (int)$digits[$i] * $weight;
+            $sum += (int) $digits[$i] * $weight;
             $weight = $weight === 9 ? 2 : $weight + 1;
         }
 

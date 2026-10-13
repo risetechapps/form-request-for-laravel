@@ -21,8 +21,7 @@ final readonly class FormDefinition
         private array  $rules,
         private array  $messages = [],
         private array  $metadata = []
-    )
-    {
+    ) {
     }
 
     /**

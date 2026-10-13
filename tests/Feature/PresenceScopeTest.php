@@ -172,4 +172,3 @@ class PresenceScopeTest extends TestCase
         return Validator::make(['email' => $value], ['email' => $rule])->fails();
     }
 }
-

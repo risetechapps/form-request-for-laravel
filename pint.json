@@ -1,0 +1,8 @@
+{
+    "preset": "per",
+    "rules": {
+        "trailing_comma_in_multiline": false,
+        "single_line_empty_body": false,
+        "single_trait_insert_per_statement": false
+    }
+}

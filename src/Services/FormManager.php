@@ -30,7 +30,7 @@ class FormManager
      *
      * @param int|null $perPage Quantidade de registros por página ou null para todos.
      * @param array<string, mixed> $filters Filtros opcionais aceitos pelo repositório.
-     * @return Collection<int, FormRequestModel>|LengthAwarePaginator<FormRequestModel>
+     * @return Collection<int, FormRequestModel>|LengthAwarePaginator<int, FormRequestModel>
      */
     public function list(?int $perPage = 15, array $filters = []): Collection|LengthAwarePaginator
     {
