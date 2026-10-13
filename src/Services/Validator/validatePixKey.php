@@ -3,6 +3,7 @@
 namespace RiseTechApps\FormRequest\Services\Validator;
 
 use RiseTechApps\FormRequest\Contracts\ValidatorContract;
+use RiseTechApps\FormRequest\Support\ErrorReporter;
 
 /**
  * Validates a Pix key in the formats defined by the Brazilian Central Bank.
@@ -24,7 +25,7 @@ class validatePixKey implements ValidatorContract
             }
 
             $value = trim($value);
-            $types = array_filter(array_map(fn($type) => strtolower(trim((string)$type)), $parameters));
+            $types = array_filter(array_map(fn($type) => strtolower(trim((string) $type)), $parameters));
 
             foreach ($types as $type) {
                 if (!in_array($type, self::TYPES, true)) {
@@ -45,9 +46,7 @@ class validatePixKey implements ValidatorContract
             return false;
         } catch (\Exception $exception) {
 
-            logglyError()->exception($exception)
-                ->withProperties(['attribute' => $attribute, 'value' => $value, 'parameters' => $parameters])
-                ->log("Error validating data rules");
+            ErrorReporter::report($exception, 'Validator pix_key failed', ['rule' => 'pix_key', 'attribute' => $attribute, 'value' => $value, 'parameters' => $parameters]);
             return false;
         }
     }

@@ -3,6 +3,7 @@
 namespace RiseTechApps\FormRequest\Services\Validator;
 
 use RiseTechApps\FormRequest\Contracts\ValidatorContract;
+use RiseTechApps\FormRequest\Support\ErrorReporter;
 use RiseTechApps\FormRequest\Services\Validator\Support\Modulo;
 
 /**
@@ -14,7 +15,7 @@ class validateBankBarcode implements ValidatorContract
     public static function validate(string $attribute, mixed $value, array $parameters, \Illuminate\Validation\Validator $validator): bool
     {
         try {
-            $barcode = preg_replace('/[^0-9]/', '', (string)$value);
+            $barcode = preg_replace('/[^0-9]/', '', (string) $value);
 
             if (strlen($barcode) !== 44) {
                 return false;
@@ -29,9 +30,7 @@ class validateBankBarcode implements ValidatorContract
                 : self::checkBankSlip($barcode);
         } catch (\Exception $exception) {
 
-            logglyError()->exception($exception)
-                ->withProperties(['attribute' => $attribute, 'value' => $value, 'parameters' => $parameters])
-                ->log("Error validating data rules");
+            ErrorReporter::report($exception, 'Validator bank_barcode failed', ['rule' => 'bank_barcode', 'attribute' => $attribute, 'value' => $value, 'parameters' => $parameters]);
             return false;
         }
     }
@@ -50,7 +49,7 @@ class validateBankBarcode implements ValidatorContract
             $digit = 1;
         }
 
-        return (int)$barcode[4] === $digit;
+        return (int) $barcode[4] === $digit;
     }
 
     /**
@@ -61,10 +60,10 @@ class validateBankBarcode implements ValidatorContract
     public static function checkUtility(string $barcode): bool
     {
         $base = substr($barcode, 0, 3) . substr($barcode, 4);
-        $valueIdentifier = (int)$barcode[2];
+        $valueIdentifier = (int) $barcode[2];
 
         if (in_array($valueIdentifier, [6, 7], true)) {
-            return (int)$barcode[3] === Modulo::mod10($base);
+            return (int) $barcode[3] === Modulo::mod10($base);
         }
 
         if (!in_array($valueIdentifier, [8, 9], true)) {
@@ -78,6 +77,6 @@ class validateBankBarcode implements ValidatorContract
             $digit = 0;
         }
 
-        return (int)$barcode[3] === $digit;
+        return (int) $barcode[3] === $digit;
     }
 }

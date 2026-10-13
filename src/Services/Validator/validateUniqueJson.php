@@ -4,10 +4,10 @@ namespace RiseTechApps\FormRequest\Services\Validator;
 
 use Illuminate\Support\Facades\DB;
 use RiseTechApps\FormRequest\Contracts\ValidatorContract;
+use RiseTechApps\FormRequest\Support\ErrorReporter;
 
 class validateUniqueJson implements ValidatorContract
 {
-
     public static function validate(string $attribute, mixed $value, array $parameters, \Illuminate\Validation\Validator $validator): bool
     {
         try {
@@ -41,9 +41,7 @@ class validateUniqueJson implements ValidatorContract
             return $query->count() === 0;
         } catch (\Exception $exception) {
 
-            logglyError()->exception($exception)
-                ->withProperties(['attribute' => $attribute, 'value' => $value, 'parameters' => $parameters])
-                ->log("Error validating data rules");
+            ErrorReporter::report($exception, 'Validator uniqueJson failed', ['rule' => 'uniqueJson', 'attribute' => $attribute, 'value' => $value, 'parameters' => $parameters]);
             return false;
         }
     }

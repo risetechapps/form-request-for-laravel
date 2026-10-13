@@ -3,6 +3,7 @@
 namespace RiseTechApps\FormRequest\Services\Validator;
 
 use RiseTechApps\FormRequest\Contracts\ValidatorContract;
+use RiseTechApps\FormRequest\Support\ErrorReporter;
 use RiseTechApps\FormRequest\Services\Validator\Support\Modulo;
 
 /**
@@ -17,9 +18,9 @@ class validateDigitableLine implements ValidatorContract
     public static function validate(string $attribute, mixed $value, array $parameters, \Illuminate\Validation\Validator $validator): bool
     {
         try {
-            $line = preg_replace('/[^0-9]/', '', (string)$value);
+            $line = preg_replace('/[^0-9]/', '', (string) $value);
 
-            if ($line === '' || (int)$line === 0) {
+            if ($line === '' || (int) $line === 0) {
                 return false;
             }
 
@@ -30,9 +31,7 @@ class validateDigitableLine implements ValidatorContract
             return strlen($line) === 47 && self::checkBankSlip($line);
         } catch (\Exception $exception) {
 
-            logglyError()->exception($exception)
-                ->withProperties(['attribute' => $attribute, 'value' => $value, 'parameters' => $parameters])
-                ->log("Error validating data rules");
+            ErrorReporter::report($exception, 'Validator digitable_line failed', ['rule' => 'digitable_line', 'attribute' => $attribute, 'value' => $value, 'parameters' => $parameters]);
             return false;
         }
     }
@@ -50,7 +49,7 @@ class validateDigitableLine implements ValidatorContract
         ];
 
         foreach ($fields as [$base, $digit]) {
-            if ((int)$digit !== Modulo::mod10($base)) {
+            if ((int) $digit !== Modulo::mod10($base)) {
                 return false;
             }
         }
@@ -71,7 +70,7 @@ class validateDigitableLine implements ValidatorContract
      */
     private static function checkUtility(string $line): bool
     {
-        $valueIdentifier = (int)$line[2];
+        $valueIdentifier = (int) $line[2];
 
         if (!in_array($valueIdentifier, [6, 7, 8, 9], true)) {
             return false;
@@ -82,7 +81,7 @@ class validateDigitableLine implements ValidatorContract
 
         foreach ([0, 12, 24, 36] as $offset) {
             $base = substr($line, $offset, 11);
-            $digit = (int)$line[$offset + 11];
+            $digit = (int) $line[$offset + 11];
 
             if ($digit !== self::blockDigit($base, $useMod10)) {
                 return false;

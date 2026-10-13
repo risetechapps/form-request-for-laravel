@@ -3,6 +3,7 @@
 namespace RiseTechApps\FormRequest\Services\Validator;
 
 use RiseTechApps\FormRequest\Contracts\ValidatorContract;
+use RiseTechApps\FormRequest\Support\ErrorReporter;
 
 /**
  * Validates password strength with configurable parameters.
@@ -41,14 +42,14 @@ class validateStrongPassword implements ValidatorContract
             $requirements = [];
 
             foreach ($parameters as $parameter) {
-                $parameter = strtolower(trim((string)$parameter));
+                $parameter = strtolower(trim((string) $parameter));
 
                 if ($parameter === '') {
                     continue;
                 }
 
                 if (ctype_digit($parameter)) {
-                    $minLength = (int)$parameter;
+                    $minLength = (int) $parameter;
                     continue;
                 }
 
@@ -77,9 +78,7 @@ class validateStrongPassword implements ValidatorContract
             return true;
         } catch (\Exception $exception) {
 
-            logglyError()->exception($exception)
-                ->withProperties(['attribute' => $attribute, 'parameters' => $parameters])
-                ->log("Error validating data rules");
+            ErrorReporter::report($exception, 'Validator strong_password failed', ['rule' => 'strong_password', 'attribute' => $attribute, 'parameters' => $parameters]);
             return false;
         }
     }

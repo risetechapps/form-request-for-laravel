@@ -3,11 +3,10 @@
 namespace RiseTechApps\FormRequest\Services\Validator;
 
 use RiseTechApps\FormRequest\Contracts\ValidatorContract;
-use Illuminate\Support\Facades\Validator;
+use RiseTechApps\FormRequest\Support\ErrorReporter;
 
 class validatorRequiredIfAny implements ValidatorContract
 {
-
     public static function validate(string $attribute, mixed $value, array $parameters, \Illuminate\Validation\Validator $validator): bool
     {
         try {
@@ -39,9 +38,7 @@ class validatorRequiredIfAny implements ValidatorContract
 
         } catch (\Exception $exception) {
 
-            logglyError()->exception($exception)
-                ->withProperties(['attribute' => $attribute, 'value' => $value, 'parameters' => $parameters])
-                ->log("Error validating data rules");
+            ErrorReporter::report($exception, 'Validator required_if_any failed', ['rule' => 'required_if_any', 'attribute' => $attribute, 'value' => $value, 'parameters' => $parameters]);
             return false;
         }
     }

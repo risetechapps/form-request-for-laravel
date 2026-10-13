@@ -3,6 +3,7 @@
 namespace RiseTechApps\FormRequest\Services\Validator;
 
 use RiseTechApps\FormRequest\Contracts\ValidatorContract;
+use RiseTechApps\FormRequest\Support\ErrorReporter;
 
 /**
  * Validates a card number using the Luhn algorithm (ISO/IEC 7812).
@@ -28,7 +29,7 @@ class validateCreditCard implements ValidatorContract
     public static function validate(string $attribute, mixed $value, array $parameters, \Illuminate\Validation\Validator $validator): bool
     {
         try {
-            $number = preg_replace('/[\s.-]/', '', (string)$value);
+            $number = preg_replace('/[\s.-]/', '', (string) $value);
 
             if (!preg_match('/^[0-9]{13,19}$/', $number)) {
                 return false;
@@ -38,7 +39,7 @@ class validateCreditCard implements ValidatorContract
                 return false;
             }
 
-            $brands = array_filter(array_map(fn($brand) => strtolower(trim((string)$brand)), $parameters));
+            $brands = array_filter(array_map(fn($brand) => strtolower(trim((string) $brand)), $parameters));
 
             if ($brands === []) {
                 return true;
@@ -57,9 +58,7 @@ class validateCreditCard implements ValidatorContract
             return false;
         } catch (\Exception $exception) {
 
-            logglyError()->exception($exception)
-                ->withProperties(['attribute' => $attribute, 'parameters' => $parameters])
-                ->log("Error validating data rules");
+            ErrorReporter::report($exception, 'Validator credit_card failed', ['rule' => 'credit_card', 'attribute' => $attribute, 'parameters' => $parameters]);
             return false;
         }
     }
@@ -74,7 +73,7 @@ class validateCreditCard implements ValidatorContract
         $double = false;
 
         for ($i = strlen($number) - 1; $i >= 0; $i--) {
-            $digit = (int)$number[$i];
+            $digit = (int) $number[$i];
 
             if ($double) {
                 $digit *= 2;

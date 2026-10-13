@@ -3,6 +3,7 @@
 namespace RiseTechApps\FormRequest\Services\Validator;
 
 use RiseTechApps\FormRequest\Contracts\ValidatorContract;
+use RiseTechApps\FormRequest\Support\ErrorReporter;
 
 class validateCNPJ implements ValidatorContract
 {
@@ -14,7 +15,7 @@ class validateCNPJ implements ValidatorContract
     public static function validate(string $attribute, mixed $value, array $parameters, \Illuminate\Validation\Validator $validator): bool
     {
         try {
-            $cnpj = strtoupper(preg_replace('/[^0-9A-Za-z]/', '', (string)$value));
+            $cnpj = strtoupper(preg_replace('/[^0-9A-Za-z]/', '', (string) $value));
 
             // The first 12 positions are alphanumeric and the last 2 are the check digits.
             if (!preg_match('/^[0-9A-Z]{12}[0-9]{2}$/', $cnpj)) {
@@ -27,15 +28,13 @@ class validateCNPJ implements ValidatorContract
 
             $firstDigit = self::checkDigit(substr($cnpj, 0, 12));
 
-            if ((int)$cnpj[12] !== $firstDigit) {
+            if ((int) $cnpj[12] !== $firstDigit) {
                 return false;
             }
 
-            return (int)$cnpj[13] === self::checkDigit(substr($cnpj, 0, 12) . $firstDigit);
+            return (int) $cnpj[13] === self::checkDigit(substr($cnpj, 0, 12) . $firstDigit);
         } catch (\Exception $exception) {
-            logglyError()->exception($exception)
-                ->withProperties(['attribute' => $attribute, 'value' => $value, 'parameters' => $parameters])
-                ->log("Error validating data rules");
+            ErrorReporter::report($exception, 'Validator cnpj failed', ['rule' => 'cnpj', 'attribute' => $attribute, 'value' => $value, 'parameters' => $parameters]);
             return false;
         }
     }
